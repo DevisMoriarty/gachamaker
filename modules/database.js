@@ -68,6 +68,14 @@ function initDatabase() {
     
     // Save database button
     document.getElementById('save-database').addEventListener('click', saveDatabase);
+    
+    // Add event listener for delete character buttons (using event delegation)
+    document.getElementById('database-content').addEventListener('click', function(e) {
+        if (e.target.closest('.delete-character')) {
+            const charId = e.target.closest('.delete-character').dataset.id;
+            deleteCharacter(charId);
+        }
+    });
 }
 
 // Load content for a specific database tab
@@ -170,18 +178,23 @@ function renderCharactersTab() {
     `;
     
     // Add event listeners
-    document.getElementById('add-character').addEventListener('click', () => {
-        openCharacterEditor(null);
-    });
+    const addCharacterBtn = document.getElementById('add-character');
+    if (addCharacterBtn) {
+        addCharacterBtn.addEventListener('click', () => {
+            openCharacterEditor(null);
+        });
+    }
     
-    document.querySelectorAll('.character-item').forEach(item => {
-        item.addEventListener('click', function() {
-            const charId = this.getAttribute('data-id');
+    // Event delegation for character items
+    document.getElementById('characters-list').addEventListener('click', function(e) {
+        const characterItem = e.target.closest('.character-item');
+        if (characterItem) {
+            const charId = characterItem.dataset.id;
             const character = gameData.characters.find(c => c.id === charId);
             if (character) {
                 openCharacterEditor(character);
             }
-        });
+        }
     });
 }
 
@@ -204,6 +217,21 @@ function renderCharacterItem(character) {
             </div>
         </div>
     `;
+}
+
+// Delete a character
+function deleteCharacter(charId) {
+    if (confirm('Are you sure you want to delete this character?')) {
+        gameData.characters = gameData.characters.filter(c => c.id !== charId);
+        renderCharactersTab();
+        
+        document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
+        document.querySelector('.status span').textContent = 'Character Deleted';
+        
+        setTimeout(() => {
+            document.querySelector('.status span').textContent = 'Ready';
+        }, 2000);
+    }
 }
 
 // Open the character editor
@@ -299,14 +327,20 @@ function openCharacterEditor(character) {
     setupImageUpload('char-image-drop', 'char-image-input', 'char-image-preview');
     
     // Save character event
-    document.getElementById('save-character').addEventListener('click', () => {
-        saveCharacter(character);
-    });
+    const saveBtn = document.getElementById('save-character');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', () => {
+            saveCharacter(character);
+        });
+    }
     
     // Cancel button
-    document.getElementById('cancel-character').addEventListener('click', () => {
-        editorElement.innerHTML = '<p>Select a character to edit or create a new one</p>';
-    });
+    const cancelBtn = document.getElementById('cancel-character');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            editorElement.innerHTML = '<p>Select a character to edit or create a new one</p>';
+        });
+    }
     
     // Add ability buttons
     document.querySelectorAll('.add-ability').forEach(btn => {
@@ -403,19 +437,44 @@ function setupImageUpload(dropZoneId, inputId, previewId) {
 function saveCharacter(character) {
     const isNew = !character;
     
+    // SAFETY CHECK: Verify all form elements exist before accessing them
+    const nameInput = document.getElementById('char-name');
+    const titleInput = document.getElementById('char-title');
+    const raritySelect = document.getElementById('char-rarity');
+    const factionSelect = document.getElementById('char-faction');
+    const descriptionTextarea = document.getElementById('char-description');
+    const imagePreview = document.getElementById('char-image-preview');
+    const hpInput = document.getElementById('char-hp');
+    const atkInput = document.getElementById('char-atk');
+    const defInput = document.getElementById('char-def');
+    const spdInput = document.getElementById('char-spd');
+    
+    // If any critical element is missing, exit early
+    if (!nameInput || !raritySelect || !hpInput || !atkInput || !defInput || !spdInput) {
+        console.error('One or more critical form elements are missing');
+        document.querySelector('.status-indicator').style.backgroundColor = 'var(--danger)';
+        document.querySelector('.status span').textContent = 'Error: Form not ready';
+        
+        setTimeout(() => {
+            document.querySelector('.status span').textContent = 'Ready';
+            document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
+        }, 3000);
+        return;
+    }
+    
     const charData = {
         id: character?.id || Date.now().toString(),
-        name: document.getElementById('char-name').value,
-        title: document.getElementById('char-title').value,
-        rarity: document.getElementById('char-rarity').value,
-        factionId: document.getElementById('char-faction').value,
-        description: document.getElementById('char-description').value,
-        image: document.getElementById('char-image-preview').src,
+        name: nameInput.value || '',
+        title: titleInput?.value || '',
+        rarity: raritySelect.value || 'common',
+        factionId: factionSelect?.value || '',
+        description: descriptionTextarea?.value || '',
+        image: imagePreview?.src || '',
         stats: {
-            hp: parseInt(document.getElementById('char-hp').value) || 100,
-            attack: parseInt(document.getElementById('char-atk').value) || 10,
-            defense: parseInt(document.getElementById('char-def').value) || 5,
-            speed: parseInt(document.getElementById('char-spd').value) || 5
+            hp: parseInt(hpInput.value) || 100,
+            attack: parseInt(atkInput.value) || 10,
+            defense: parseInt(defInput.value) || 5,
+            speed: parseInt(spdInput.value) || 5
         },
         abilities: {}
     };
@@ -426,7 +485,7 @@ function saveCharacter(character) {
         if (select && select.value) {
             charData.abilities[type] = {
                 id: select.value,
-                name: select.options[select.selectedIndex].text.split(' (')[0]
+                name: select.options[select.selectedIndex]?.text?.split(' (')[0] || 'Unknown Ability'
             };
         }
     });
@@ -455,7 +514,10 @@ function saveCharacter(character) {
 // Open ability creation modal
 function openAbilityModal(abilityType, character) {
     const modal = document.getElementById('ability-modal');
+    if (!modal) return;
+    
     const modalContent = modal.querySelector('.modal-content');
+    if (!modalContent) return;
     
     modalContent.innerHTML = `
         <span class="close">&times;</span>
@@ -511,38 +573,50 @@ function openAbilityModal(abilityType, character) {
     setupImageUpload('ability-anim-drop', 'ability-anim-input', 'ability-anim-preview');
     
     // Save ability
-    document.getElementById('save-ability').addEventListener('click', function() {
-        const abilityData = {
-            id: Date.now().toString(),
-            name: document.getElementById('ability-name').value,
-            type: abilityType,
-            element: document.getElementById('ability-element').value,
-            damage: parseInt(document.getElementById('ability-damage').value) || 100,
-            description: document.getElementById('ability-desc').value,
-            animation: document.getElementById('ability-anim-preview').src
-        };
-        
-        gameData.skills.push(abilityData);
-        
-        // Close the modal
-        modal.style.display = 'none';
-        
-        // Refresh the character editor to show the new ability
-        if (character) {
-            openCharacterEditor(character);
-        }
-    });
+    const saveBtn = document.getElementById('save-ability');
+    if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+            const abilityData = {
+                id: Date.now().toString(),
+                name: document.getElementById('ability-name')?.value || 'New Ability',
+                type: abilityType,
+                element: document.getElementById('ability-element')?.value || 'neutral',
+                damage: parseInt(document.getElementById('ability-damage')?.value) || 100,
+                description: document.getElementById('ability-desc')?.value || '',
+                animation: document.getElementById('ability-anim-preview')?.src || ''
+            };
+            
+            gameData.skills.push(abilityData);
+            
+            // Close the modal
+            modal.style.display = 'none';
+            
+            // Refresh the character editor to show the new ability
+            if (character) {
+                openCharacterEditor(character);
+            }
+        });
+    }
     
     // Cancel button
-    document.getElementById('cancel-ability').addEventListener('click', function() {
-        modal.style.display = 'none';
-    });
+    const cancelBtn = document.getElementById('cancel-ability');
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+    }
+    
+    // Close button
+    const closeBtn = modal.querySelector('.close');
+    if (closeBtn) {
+        closeBtn.addEventListener('click', function() {
+            modal.style.display = 'none';
+        });
+    }
     
     // Show the modal
     modal.style.display = 'flex';
 }
-
-// Additional functions for other tabs would go here...
 
 // Load the database when the module is initialized
 loadDatabase();
