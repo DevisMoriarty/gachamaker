@@ -1,1 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GachaMaker</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- RPG Maker MZ-inspired UI -->
+  <div id="engine-ui">
+    <header>
+      <h1>GachaMaker</h1>
+      <div class="tabs">
+        <button data-tab="editor">Editor</button>
+        <button data-tab="database">Database</button>
+        <button data-tab="events">Events</button>
+        <button data-tab="scripts">Scripts</button>
+        <button data-tab="plugins">Plugins</button>
+      </div>
+    </header>
+    
+    <main>
+      <!-- Module content injected here -->
+      <div id="module-content"></div>
+    </main>
+    
+    <footer>
+      <button id="play-test">▶ Play Test</button>
+      <div id="status">Ready</div>
+    </footer>
+  </div>
 
+  <!-- Load modules dynamically -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>
