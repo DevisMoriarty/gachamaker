@@ -1,69 +1,71 @@
-// Core engine state
-const Engine = {
-  activeModule: 'editor',
-  gameState: {
-    gold: 0,
-    cps: 0, // Clicks per second (idle)
-    lastTick: Date.now()
-  },
-  modules: {}
-};
+// main.js
 
-// Load module dynamically
-async function loadModule(name) {
-  const module = await import(`./modules/${name}.js`);
-  Engine.modules[name] = module;
-  Engine.activeModule = name;
-  
-  // Update UI
-  document.querySelectorAll('.tabs button').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.tab === name);
-  });
-  
-  document.getElementById('module-content').innerHTML = 
-    module.render() || '<div class="placeholder">Module loaded!</div>';
-}
-
-// Initialize
-document.addEventListener('DOMContentLoaded', () => {
-  // Tab navigation
-  document.querySelectorAll('.tabs button').forEach(btn => {
-    btn.addEventListener('click', () => loadModule(btn.dataset.tab));
-  });
-  
-  // Play test button
-  document.getElementById('play-test').addEventListener('click', () => {
-    Engine.gameState = { gold: 0, cps: 0, lastTick: Date.now() };
-    document.getElementById('module-content').innerHTML = `
-      <div class="idle-ui">
-        <h2>Play Test</h2>
-        <div>Gold: <span id="gold-count">0</span></div>
-        <div>CPS: <span id="cps-count">0</span></div>
-        <button class="idle-button">⛏️ Mine Gold</button>
-        <button class="idle-button gacha-pull">💎 Gacha Pull</button>
-      </div>
-    `;
+document.addEventListener('DOMContentLoaded', function() {
+    // Module switching functionality
+    const moduleItems = document.querySelectorAll('.module-item');
+    const moduleContainers = document.querySelectorAll('.module-container');
     
-    // Start idle loop
-    setInterval(updateGame, 100);
-  });
-  
-  // Load default module
-  loadModule('editor');
+    // Add click event to each module item
+    moduleItems.forEach(item => {
+        item.addEventListener('click', function() {
+            // Remove active class from all items
+            moduleItems.forEach(i => i.classList.remove('active'));
+            // Add active class to clicked item
+            this.classList.add('active');
+            
+            // Get target module
+            const targetModule = this.getAttribute('data-module');
+            
+            // Hide all module containers
+            moduleContainers.forEach(container => {
+                container.classList.remove('active');
+            });
+            
+            // Show target module
+            document.getElementById(`${targetModule}-module`).classList.add('active');
+        });
+    });
+    
+    // Modal functionality
+    const modal = document.getElementById('ability-modal');
+    const closeBtn = document.querySelector('.close');
+    
+    closeBtn.addEventListener('click', function() {
+        modal.style.display = 'none';
+    });
+    
+    window.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.style.display = 'none';
+        }
+    });
+    
+    // Save project button
+    document.getElementById('save-project').addEventListener('click', function() {
+        // This would save the project data to localStorage or IndexedDB
+        alert('Project saved successfully!');
+        document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
+        document.querySelector('.status span').textContent = 'Saved';
+        
+        setTimeout(() => {
+            document.querySelector('.status span').textContent = 'Ready';
+        }, 2000);
+    });
+    
+    // Test game button
+    document.getElementById('test-game').addEventListener('click', function() {
+        alert('Game test started!');
+        document.querySelector('.status-indicator').style.backgroundColor = 'var(--info)';
+        document.querySelector('.status span').textContent = 'Testing...';
+        
+        setTimeout(() => {
+            document.querySelector('.status span').textContent = 'Ready';
+            document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
+        }, 3000);
+    });
+    
+    // Initialize database module
+    if (typeof initDatabase === 'function') {
+        initDatabase();
+    }
 });
-
-// Game loop (for play testing)
-function updateGame() {
-  const now = Date.now();
-  const delta = (now - Engine.gameState.lastTick) / 1000;
-  Engine.gameState.lastTick = now;
-  
-  // Add idle gold
-  Engine.gameState.gold += Engine.gameState.cps * delta;
-  
-  // Update UI
-  document.getElementById('gold-count').textContent = 
-    Math.floor(Engine.gameState.gold).toLocaleString();
-  document.getElementById('cps-count').textContent = 
-    Engine.gameState.cps.toFixed(1);
-}
