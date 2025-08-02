@@ -1,1 +1,69 @@
+:root {
+  /* RPG Maker MZ color scheme */
+  --dark: #2c2c2c;
+  --darker: #1a1a1a;
+  --gold: #d4af37;
+  --text: #e0e0e0;
+}
 
+body {
+  margin: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: var(--darker);
+  color: var(--text);
+  overflow: hidden;
+}
+
+#engine-ui {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+
+header {
+  background: var(--dark);
+  padding: 10px;
+  border-bottom: 2px solid var(--gold);
+}
+
+.tabs button {
+  background: #333;
+  color: var(--text);
+  border: 1px solid #444;
+  padding: 8px 15px;
+  margin-right: 5px;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.tabs button.active {
+  background: var(--gold);
+  color: #000;
+  font-weight: bold;
+}
+
+main {
+  flex: 1;
+  padding: 15px;
+  overflow: auto;
+  background: #222;
+}
+
+/* Idle game UI elements */
+.idle-button {
+  background: linear-gradient(to bottom, #4a90e2, #2c66b0);
+  border: 2px solid #1a4a8c;
+  border-radius: 50%;
+  width: 80px;
+  height: 80px;
+  font-size: 24px;
+  margin: 20px auto;
+  display: block;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.5);
+}
+
+.gacha-pull {
+  background: linear-gradient(135deg, #d4af37, #a67c00);
+  color: #000;
+  font-weight: bold;
+}
