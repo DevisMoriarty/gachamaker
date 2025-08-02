@@ -504,7 +504,7 @@ function saveCharacter(character) {
     
     // Show success message
     document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
-    document.querySelector('.status span').textContent = isNew ? 'Character Created' : 'Character Updated';
+    document.querySelector('.status span').textContent = isNew ? 'Character Created' to 'Character Updated';
     
     setTimeout(() => {
         document.querySelector('.status span').textContent = 'Ready';
@@ -616,6 +616,252 @@ function openAbilityModal(abilityType, character) {
     
     // Show the modal
     modal.style.display = 'flex';
+}
+
+// ITEMS TAB - Placeholder implementation
+function renderItemsTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Item List</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-item" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Item
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Item Editor</h3>
+                <p>Select an item to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addItemBtn = document.getElementById('add-item');
+    if (addItemBtn) {
+        addItemBtn.addEventListener('click', function() {
+            alert('Item creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// SKILLS TAB - Placeholder implementation
+function renderSkillsTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Skills List</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-skill" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Skill
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Skill Editor</h3>
+                <p>Select a skill to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addSkillBtn = document.getElementById('add-skill');
+    if (addSkillBtn) {
+        addSkillBtn.addEventListener('click', function() {
+            alert('Skill creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// FACTIONS TAB - Placeholder implementation
+function renderFactionsTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Faction List</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-faction" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Faction
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Faction Editor</h3>
+                <p>Select a faction to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addFactionBtn = document.getElementById('add-faction');
+    if (addFactionBtn) {
+        addFactionBtn.addEventListener('click', function() {
+            alert('Faction creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// GATCHA TAB - Placeholder implementation
+function renderGatchaTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Gatcha Banners</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-banner" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Banner
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Banner Editor</h3>
+                <p>Select a banner to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addBannerBtn = document.getElementById('add-banner');
+    if (addBannerBtn) {
+        addBannerBtn.addEventListener('click', function() {
+            alert('Gatcha banner creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// ACHIEVEMENTS TAB - Placeholder implementation
+function renderAchievementsTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Achievements List</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-achievement" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Achievement
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Achievement Editor</h3>
+                <p>Select an achievement to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addAchievementBtn = document.getElementById('add-achievement');
+    if (addAchievementBtn) {
+        addAchievementBtn.addEventListener('click', function() {
+            alert('Achievement creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// STORY TAB - Placeholder implementation
+function renderStoryTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-grid">
+            <div class="database-section">
+                <h3>Story Arcs</h3>
+                <p>This section is under development. Coming soon!</p>
+                <button class="btn btn-success" id="add-arc" style="margin-top: 15px;">
+                    <i class="fas fa-plus"></i> Add Story Arc
+                </button>
+            </div>
+            <div class="database-section">
+                <h3>Story Editor</h3>
+                <p>Select a story arc to edit or create a new one</p>
+            </div>
+        </div>
+    `;
+    
+    // Add event listeners
+    const addArcBtn = document.getElementById('add-arc');
+    if (addArcBtn) {
+        addArcBtn.addEventListener('click', function() {
+            alert('Story creation functionality will be available in the next update!');
+        });
+    }
+}
+
+// SYSTEM TAB - Placeholder implementation
+function renderSystemTab() {
+    const contentElement = document.getElementById('database-content');
+    if (!contentElement) return;
+    
+    contentElement.innerHTML = `
+        <div class="database-section">
+            <h3>System Settings</h3>
+            <p>This section is under development. Coming soon!</p>
+            
+            <div class="form-group">
+                <label>Currencies</label>
+                <div id="currencies-list">
+                    ${gameData.system.currencies.map(currency => `
+                        <div class="database-item" style="margin-bottom: 5px;">
+                            <div class="database-item-content">
+                                <div class="database-item-title">${currency}</div>
+                            </div>
+                            <div class="database-item-actions">
+                                <button class="btn btn-sm btn-danger delete-currency" data-currency="${currency}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+                <div class="form-row" style="margin-top: 10px;">
+                    <input type="text" id="new-currency" placeholder="New currency name">
+                    <button class="btn btn-sm btn-success" id="add-currency">
+                        <i class="fas fa-plus"></i> Add
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Level Curve</label>
+                <p>Configure how experience points translate to levels</p>
+                <div id="level-curve">
+                    <p>Level curve configuration coming soon...</p>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add currency event
+    document.getElementById('add-currency').addEventListener('click', function() {
+        const currencyInput = document.getElementById('new-currency');
+        const currencyName = currencyInput.value.trim();
+        
+        if (currencyName && !gameData.system.currencies.includes(currencyName)) {
+            gameData.system.currencies.push(currencyName);
+            currencyInput.value = '';
+            renderSystemTab();
+        }
+    });
+    
+    // Delete currency event (using event delegation)
+    document.getElementById('currencies-list').addEventListener('click', function(e) {
+        if (e.target.closest('.delete-currency')) {
+            const currency = e.target.closest('.delete-currency').dataset.currency;
+            gameData.system.currencies = gameData.system.currencies.filter(c => c !== currency);
+            renderSystemTab();
+        }
+    });
 }
 
 // Load the database when the module is initialized
