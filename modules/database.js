@@ -502,7 +502,7 @@ function saveCharacter(character) {
     // Refresh the characters list
     renderCharactersTab();
     
-    // Show success message - FIXED SYNTAX ERROR HERE
+    // Show success message - CORRECTED SYNTAX
     document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
     document.querySelector('.status span').textContent = isNew ? 'Character Created' : 'Character Updated';
     
