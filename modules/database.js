@@ -18,10 +18,19 @@ let gameData = {
 };
 
 // Animation preview state
-let animationPreview = {
+let animationPreviewState = {
     isPlaying: false,
     currentFrame: 0,
-    intervalId: null
+    intervalId: null,
+    type: '',
+    frames: [],
+    speed: 10
+};
+
+// Character relationships tree state
+let relationshipTreeState = {
+    nodes: [],
+    connections: []
 };
 
 // Initialize the database module
@@ -342,13 +351,93 @@ function openCharacterEditor(character) {
         
         <h4>Character Relationships</h4>
         <div class="form-section">
-            <div class="relationship-tree-container" id="relationship-tree">
-                <!-- Relationship tree will be rendered here -->
+            <div class="relationship-tree-container">
+                <div class="tree-controls">
+                    <button class="btn btn-sm btn-info" id="add-character-to-tree">
+                        <i class="fas fa-plus"></i> Add Character to Tree
+                    </button>
+                    <button class="btn btn-sm btn-primary" id="play-relationship-animation">
+                        <i class="fas fa-play"></i> Play Animation
+                    </button>
+                    <button class="btn btn-sm btn-secondary" id="clear-relationships">
+                        <i class="fas fa-trash-alt"></i> Clear Tree
+                    </button>
+                </div>
+                <div class="relationship-tree" id="relationship-tree">
+                    <!-- Tree will be rendered here -->
+                </div>
             </div>
             
-            <div class="relationship-controls">
-                <button class="btn btn-sm btn-info add-character-relationship" style="margin-top: 5px;">
-                    <i class="fas fa-plus"></i> Add Character to Tree
+            <div class="form-group">
+                <label>Likes</label>
+                <div class="relationship-container" id="char-likes">
+                    ${character?.relationships?.likes?.map(like => 
+                        `<div class="relationship-item">
+                            <select class="character-select">
+                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                    `<option value="${c.id}" ${c.id === like.characterId ? 'selected' : ''}>${c.name}</option>`
+                                ).join('')}
+                            </select>
+                            <button class="btn btn-sm btn-danger remove-relationship">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-relationship" data-type="like" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Like
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>Dislikes</label>
+                <div class="relationship-container" id="char-dislikes">
+                    ${character?.relationships?.dislikes?.map(dislike => 
+                        `<div class="relationship-item">
+                            <select class="character-select">
+                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                    `<option value="${c.id}" ${c.id === dislike.characterId ? 'selected' : ''}>${c.name}</option>`
+                                ).join('')}
+                            </select>
+                            <button class="btn btn-sm btn-danger remove-relationship">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-relationship" data-type="dislike" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Dislike
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>Team Bonuses</label>
+                <div class="relationship-container" id="char-team-bonuses">
+                    ${character?.relationships?.teamBonuses?.map(bonus => 
+                        `<div class="team-bonus-item">
+                            <div class="form-row" style="margin-bottom: 5px;">
+                                <select class="character-select" style="flex: 2;">
+                                    ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                        `<option value="${c.id}" ${c.id === bonus.characterId ? 'selected' : ''}>${c.name}</option>`
+                                    ).join('')}
+                                </select>
+                                <select class="bonus-type">
+                                    <option value="atk" ${bonus.type === 'atk' ? 'selected' : ''}>ATK</option>
+                                    <option value="def" ${bonus.type === 'def' ? 'selected' : ''}>DEF</option>
+                                    <option value="hp" ${bonus.type === 'hp' ? 'selected' : ''}>HP</option>
+                                    <option value="spd" ${bonus.type === 'spd' ? 'selected' : ''}>SPD</option>
+                                </select>
+                                <input type="number" class="bonus-value" value="${bonus.value}" min="1" max="100" style="width: 60px;">
+                                <span>%</span>
+                                <button class="btn btn-sm btn-danger remove-team-bonus">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-team-bonus" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Team Bonus
                 </button>
             </div>
         </div>
@@ -422,6 +511,30 @@ function openCharacterEditor(character) {
         });
     }
     
+    // Add relationship buttons
+    document.querySelectorAll('.add-relationship').forEach(btn => {
+        btn.addEventListener('click', function() {
+            addRelationship(this.dataset.type);
+        });
+    });
+    
+    // Remove relationship buttons
+    document.querySelectorAll('.remove-relationship').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.relationship-item').remove();
+        });
+    });
+    
+    // Add team bonus button
+    document.querySelector('.add-team-bonus').addEventListener('click', addTeamBonus);
+    
+    // Remove team bonus buttons
+    document.querySelectorAll('.remove-team-bonus').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.team-bonus-item').remove();
+        });
+    });
+    
     // Add evolution button
     document.querySelector('.add-evolution').addEventListener('click', addEvolution);
     
@@ -440,14 +553,176 @@ function openCharacterEditor(character) {
         });
     });
     
-    // Initialize relationship tree
-    if (character) {
-        renderRelationshipTree(character);
+    // Relationship tree functionality
+    setupRelationshipTree();
+}
+
+// Setup relationship tree functionality
+function setupRelationshipTree() {
+    const treeContainer = document.getElementById('relationship-tree');
+    const addBtn = document.getElementById('add-character-to-tree');
+    const playBtn = document.getElementById('play-relationship-animation');
+    const clearBtn = document.getElementById('clear-relationships');
+    
+    if (!treeContainer || !addBtn || !playBtn || !clearBtn) return;
+    
+    // Initialize with existing characters in relationships
+    relationshipTreeState.nodes = [];
+    relationshipTreeState.connections = [];
+    
+    // Add character to tree button
+    addBtn.addEventListener('click', function() {
+        showCharacterSelectionForTree();
+    });
+    
+    // Play animation button
+    playBtn.addEventListener('click', function() {
+        if (relationshipTreeState.nodes.length > 0) {
+            playRelationshipAnimation();
+        }
+    });
+    
+    // Clear tree button
+    clearBtn.addEventListener('click', function() {
+        relationshipTreeState.nodes = [];
+        relationshipTreeState.connections = [];
+        renderRelationshipTree();
+    });
+    
+    // Initial render
+    renderRelationshipTree();
+}
+
+// Show character selection for adding to tree
+function showCharacterSelectionForTree() {
+    const selectContainer = document.createElement('div');
+    selectContainer.className = 'character-select-container';
+    selectContainer.innerHTML = `
+        <h4>Select Character for Tree</h4>
+        <select id="tree-character-select">
+            <option value="">Select character</option>
+            ${gameData.characters.map(c => 
+                `<option value="${c.id}">${c.name}</option>`
+            ).join('')}
+        </select>
+        <button class="btn btn-sm btn-success" id="confirm-add-to-tree">Add to Tree</button>
+        <button class="btn btn-sm btn-secondary" id="cancel-add-to-tree">Cancel</button>
+    `;
+    
+    const editor = document.getElementById('character-editor');
+    if (!editor) return;
+    
+    // Remove any existing selection containers
+    document.querySelectorAll('.character-select-container').forEach(el => el.remove());
+    
+    editor.appendChild(selectContainer);
+    
+    // Event listeners for buttons
+    document.getElementById('confirm-add-to-tree')?.addEventListener('click', function() {
+        const select = document.getElementById('tree-character-select');
+        if (select && select.value) {
+            addCharacterToTree(select.value);
+            selectContainer.remove();
+        }
+    });
+    
+    document.getElementById('cancel-add-to-tree')?.addEventListener('click', function() {
+        selectContainer.remove();
+    });
+}
+
+// Add character to tree
+function addCharacterToTree(characterId) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character) return;
+    
+    // Check if already added
+    if (relationshipTreeState.nodes.some(n => n.id === characterId)) {
+        alert('Character already in tree');
+        return;
     }
     
-    // Add character to relationship tree button
-    document.querySelector('.add-character-relationship').addEventListener('click', function() {
-        addCharacterToRelationshipTree();
+    relationshipTreeState.nodes.push({
+        id: characterId,
+        name: character.name,
+        image: character.image || 'https://via.placeholder.com/50',
+        x: Math.random() * 400 + 100,
+        y: Math.random() * 300 + 100
+    });
+    
+    renderRelationshipTree();
+}
+
+// Render the relationship tree
+function renderRelationshipTree() {
+    const treeContainer = document.getElementById('relationship-tree');
+    if (!treeContainer) return;
+    
+    // Clear existing content
+    treeContainer.innerHTML = '';
+    
+    if (relationshipTreeState.nodes.length === 0) {
+        treeContainer.innerHTML = '<p>No characters in relationship tree yet</p>';
+        return;
+    }
+    
+    // Create SVG container for connections
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '100%');
+    svg.setAttribute('height', '400');
+    svg.style.position = 'absolute';
+    svg.style.top = '0';
+    svg.style.left = '0';
+    svg.style.pointerEvents = 'none';
+    
+    // Draw connections
+    relationshipTreeState.connections.forEach(conn => {
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        const sourceNode = relationshipTreeState.nodes.find(n => n.id === conn.from);
+        const targetNode = relationshipTreeState.nodes.find(n => n.id === conn.to);
+        
+        if (sourceNode && targetNode) {
+            line.setAttribute('x1', sourceNode.x + 25);
+            line.setAttribute('y1', sourceNode.y + 25);
+            line.setAttribute('x2', targetNode.x + 25);
+            line.setAttribute('y2', targetNode.y + 25);
+            line.setAttribute('stroke', conn.type === 'like' ? '#00ff00' : '#ff0000');
+            line.setAttribute('stroke-width', '2');
+            svg.appendChild(line);
+        }
+    });
+    
+    // Add nodes
+    relationshipTreeState.nodes.forEach(node => {
+        const nodeElement = document.createElement('div');
+        nodeElement.className = 'tree-node';
+        nodeElement.style.position = 'absolute';
+        nodeElement.style.left = `${node.x}px`;
+        nodeElement.style.top = `${node.y}px`;
+        nodeElement.innerHTML = `
+            <img src="${node.image}" alt="${node.name}" style="width: 50px; height: 50px;">
+            <div class="node-name">${node.name}</div>
+        `;
+        treeContainer.appendChild(nodeElement);
+    });
+    
+    // Add SVG to container
+    treeContainer.appendChild(svg);
+}
+
+// Play relationship animation
+function playRelationshipAnimation() {
+    const nodes = document.querySelectorAll('.tree-node');
+    if (nodes.length < 2) return;
+    
+    // Simple animation effect
+    nodes.forEach((node, index) => {
+        node.style.transform = `scale(${1 + Math.sin(index) * 0.2})`;
+        node.style.transition = 'transform 0.5s ease-in-out';
+        
+        setTimeout(() => {
+            node.style.transform = '';
+        }, 500);
     });
 }
 
@@ -476,17 +751,6 @@ function renderSpritesheetOptions(character) {
             </div>
         </div>
         
-        <div class="form-row">
-            <div class="form-group">
-                <label>Frame Width (px)</label>
-                <input type="number" id="spritesheet-frame-width" value="${character?.spritesheet?.frameWidth || 32}" min="1">
-            </div>
-            <div class="form-group">
-                <label>Frame Height (px)</label>
-                <input type="number" id="spritesheet-frame-height" value="${character?.spritesheet?.frameHeight || 32}" min="1">
-            </div>
-        </div>
-        
         <div class="form-group">
             <label>Animation Speed</label>
             <input type="range" id="spritesheet-speed" min="1" max="30" value="${character?.spritesheet?.speed || 10}">
@@ -496,15 +760,6 @@ function renderSpritesheetOptions(character) {
                 <span>Fast</span>
             </div>
         </div>
-        
-        <div class="form-group">
-            <button class="btn btn-sm btn-info" id="play-spritesheet-animation">
-                <i class="fas fa-play"></i> Play Animation
-            </button>
-            <button class="btn btn-sm btn-secondary" id="stop-spritesheet-animation">
-                <i class="fas fa-stop"></i> Stop Animation
-            </button>
-        </div>
     `;
 }
 
@@ -512,55 +767,36 @@ function renderSpritesheetOptions(character) {
 function renderFrameByFrameOptions(character) {
     return `
         <div class="form-group">
-            <label>Animation Profile Name</label>
-            <input type="text" id="frame-profile-name" value="${character?.frameByFrame?.profileName || 'Animation Profile'}" placeholder="Enter profile name">
+            <label>Frame 1</label>
+            <div class="drop-zone" id="frame1-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame1-input" accept="image/*" style="display: none;">
+            </div>
+            <img id="frame1-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[0] || ''}" alt="Frame 1 Preview">
         </div>
         
-        <div class="form-row" style="margin-bottom: 10px;">
-            <div class="form-group" style="flex: 1; margin-right: 10px;">
-                <label>Frame 1</label>
-                <div class="drop-zone" id="frame1-drop">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & Drop frame image here</p>
-                    <p>or click to select</p>
-                    <input type="file" id="frame1-input" accept="image/*" style="display: none;">
-                </div>
-                <img id="frame1-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[0] || ''}" alt="Frame 1 Preview">
-                <div class="form-group">
-                    <label>Duration (ms)</label>
-                    <input type="number" id="frame1-duration" value="${character?.frameByFrame?.durations?.[0] || 200}" min="50">
-                </div>
+        <div class="form-group">
+            <label>Frame 2</label>
+            <div class="drop-zone" id="frame2-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame2-input" accept="image/*" style="display: none;">
             </div>
-            
-            <div class="form-group" style="flex: 1; margin-right: 10px;">
-                <label>Frame 2</label>
-                <div class="drop-zone" id="frame2-drop">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & Drop frame image here</p>
-                    <p>or click to select</p>
-                    <input type="file" id="frame2-input" accept="image/*" style="display: none;">
-                </div>
-                <img id="frame2-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[1] || ''}" alt="Frame 2 Preview">
-                <div class="form-group">
-                    <label>Duration (ms)</label>
-                    <input type="number" id="frame2-duration" value="${character?.frameByFrame?.durations?.[1] || 200}" min="50">
-                </div>
+            <img id="frame2-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[1] || ''}" alt="Frame 2 Preview">
+        </div>
+        
+        <div class="form-group">
+            <label>Frame 3</label>
+            <div class="drop-zone" id="frame3-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame3-input" accept="image/*" style="display: none;">
             </div>
-            
-            <div class="form-group" style="flex: 1;">
-                <label>Frame 3</label>
-                <div class="drop-zone" id="frame3-drop">
-                    <i class="fas fa-cloud-upload-alt"></i>
-                    <p>Drag & Drop frame image here</p>
-                    <p>or click to select</p>
-                    <input type="file" id="frame3-input" accept="image/*" style="display: none;">
-                </div>
-                <img id="frame3-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[2] || ''}" alt="Frame 3 Preview">
-                <div class="form-group">
-                    <label>Duration (ms)</label>
-                    <input type="number" id="frame3-duration" value="${character?.frameByFrame?.durations?.[2] || 200}" min="50">
-                </div>
-            </div>
+            <img id="frame3-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[2] || ''}" alt="Frame 3 Preview">
         </div>
         
         <div class="form-group">
@@ -572,16 +808,75 @@ function renderFrameByFrameOptions(character) {
                 <span>Fast</span>
             </div>
         </div>
-        
-        <div class="form-group">
-            <button class="btn btn-sm btn-info" id="play-frame-animation">
-                <i class="fas fa-play"></i> Play Animation
-            </button>
-            <button class="btn btn-sm btn-secondary" id="stop-frame-animation">
-                <i class="fas fa-stop"></i> Stop Animation
+    `;
+}
+
+// Add relationship
+function addRelationship(type) {
+    const container = document.getElementById(`char-${type}s`);
+    const characterOptions = gameData.characters
+        .filter(c => !document.querySelectorAll(`#char-${type}s .character-select`).some(select => 
+            select.value === c.id))
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'relationship-item';
+    newItem.innerHTML = `
+        <select class="character-select">
+            <option value="">Select character</option>
+            ${characterOptions}
+        </select>
+        <button class="btn btn-sm btn-danger remove-relationship">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    container.appendChild(newItem);
+    
+    // Add event listener to the new remove button
+    newItem.querySelector('.remove-relationship').addEventListener('click', function() {
+        this.closest('.relationship-item').remove();
+    });
+}
+
+// Add team bonus
+function addTeamBonus() {
+    const container = document.getElementById('char-team-bonuses');
+    const characterOptions = gameData.characters
+        .filter(c => !document.querySelectorAll('#char-team-bonuses .character-select').some(select => 
+            select.value === c.id))
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'team-bonus-item';
+    newItem.innerHTML = `
+        <div class="form-row" style="margin-bottom: 5px;">
+            <select class="character-select" style="flex: 2;">
+                <option value="">Select character</option>
+                ${characterOptions}
+            </select>
+            <select class="bonus-type">
+                <option value="atk">ATK</option>
+                <option value="def">DEF</option>
+                <option value="hp">HP</option>
+                <option value="spd">SPD</option>
+            </select>
+            <input type="number" class="bonus-value" value="10" min="1" max="100" style="width: 60px;">
+            <span>%</span>
+            <button class="btn btn-sm btn-danger remove-team-bonus">
+                <i class="fas fa-trash"></i>
             </button>
         </div>
     `;
+    
+    container.appendChild(newItem);
+    
+    // Add event listener to the new remove button
+    newItem.querySelector('.remove-team-bonus').addEventListener('click', function() {
+        this.closest('.team-bonus-item').remove();
+    });
 }
 
 // Add evolution
@@ -947,6 +1242,37 @@ function saveCharacter(character) {
         return;
     }
     
+    // Collect relationships
+    const relationships = {
+        likes: [],
+        dislikes: [],
+        teamBonuses: []
+    };
+    
+    document.querySelectorAll('#char-likes .relationship-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        if (characterId) {
+            relationships.likes.push({ characterId });
+        }
+    });
+    
+    document.querySelectorAll('#char-dislikes .relationship-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        if (characterId) {
+            relationships.dislikes.push({ characterId });
+        }
+    });
+    
+    document.querySelectorAll('#char-team-bonuses .team-bonus-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        const type = item.querySelector('.bonus-type').value;
+        const value = parseInt(item.querySelector('.bonus-value').value) || 0;
+        
+        if (characterId && value > 0) {
+            relationships.teamBonuses.push({ characterId, type, value });
+        }
+    });
+    
     // Collect evolutions
     const evolutions = [];
     document.querySelectorAll('#char-evolutions .evolution-item').forEach(item => {
@@ -988,6 +1314,7 @@ function saveCharacter(character) {
             speed: parseInt(spdInput.value) || 5
         },
         abilities: {},
+        relationships: relationships,
         evolutions: evolutions
     };
     
@@ -1728,178 +2055,7 @@ function updateAbilityDescription() {
     descriptionElement.value = description;
 }
 
-// Animation-related functions
-function createAnimationProfile(characterId, animationName) {
-    // Create an animation profile object for the character
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character) return;
-    
-    // Initialize animation data structure
-    if (!character.animations) {
-        character.animations = {};
-    }
-    
-    // Add new animation profile
-    character.animations[animationName] = {
-        name: animationName,
-        type: '', // 'spritesheet', 'frame-by-frame'
-        frames: [], // array of frame objects
-        speed: 10, // frames per second
-        loop: true // whether to loop the animation
-    };
-    
-    saveDatabase();
-}
-
-function addFrameToAnimation(characterId, animationName, frameData) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.animations[animationName]) return;
-    
-    // Add frame to animation
-    character.animations[animationName].frames.push(frameData);
-    
-    saveDatabase();
-}
-
-function updateFrameInAnimation(characterId, animationName, frameIndex, updatedFrame) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.animations[animationName]) return;
-    
-    // Update specific frame
-    if (character.animations[animationName].frames[frameIndex]) {
-        character.animations[animationName].frames[frameIndex] = updatedFrame;
-    }
-    
-    saveDatabase();
-}
-
-function removeFrameFromAnimation(characterId, animationName, frameIndex) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.animations[animationName]) return;
-    
-    // Remove frame from animation
-    character.animations[animationName].frames.splice(frameIndex, 1);
-    
-    saveDatabase();
-}
-
-function setAnimationSpeed(characterId, animationName, speed) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.animations[animationName]) return;
-    
-    // Update animation speed
-    character.animations[animationName].speed = speed;
-    
-    saveDatabase();
-}
-
-function setAnimationLoop(characterId, animationName, loop) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.animations[animationName]) return;
-    
-    // Update animation loop setting
-    character.animations[animationName].loop = loop;
-    
-    saveDatabase();
-}
-
-// Relationship system functions
-function createCharacterRelationshipTree(characterId) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character) return;
-    
-    // Initialize relationships tree structure
-    if (!character.relationshipsTree) {
-        character.relationshipsTree = {
-            nodes: [], // array of node objects with id, name, image, type (like/dislike)
-            edges: []  // array of edge objects connecting nodes
-        };
-    }
-    
-    saveDatabase();
-}
-
-function addCharacterToRelationshipTree(characterId, nodeId, nodeData) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.relationshipsTree) return;
-    
-    // Add new node to tree
-    character.relationshipsTree.nodes.push({
-        id: nodeId,
-        name: nodeData.name,
-        image: nodeData.image,
-        type: nodeData.type, // 'like' or 'dislike'
-        position: nodeData.position || { x: 0, y: 0 }
-    });
-    
-    saveDatabase();
-}
-
-function addRelationshipEdge(characterId, fromNodeId, toNodeId, relationshipType, buffDebuff = null) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.relationshipsTree) return;
-    
-    // Add new edge between nodes
-    character.relationshipsTree.edges.push({
-        id: `${fromNodeId}-${toNodeId}`,
-        from: fromNodeId,
-        to: toNodeId,
-        type: relationshipType, // 'like' or 'dislike'
-        buffDebuff: buffDebuff || null
-    });
-    
-    saveDatabase();
-}
-
-function updateRelationshipEdge(characterId, edgeId, updatedData) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.relationshipsTree) return;
-    
-    // Find and update specific edge
-    const edgeIndex = character.relationshipsTree.edges.findIndex(e => e.id === edgeId);
-    if (edgeIndex !== -1) {
-        Object.assign(character.relationshipsTree.edges[edgeIndex], updatedData);
-    }
-    
-    saveDatabase();
-}
-
-function removeRelationshipEdge(characterId, edgeId) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.relationshipsTree) return;
-    
-    // Remove specific edge
-    character.relationshipsTree.edges = character.relationshipsTree.edges.filter(e => e.id !== edgeId);
-    
-    saveDatabase();
-}
-
-function updateCharacterNodePosition(characterId, nodeId, position) {
-    const character = gameData.characters.find(c => c.id === characterId);
-    if (!character || !character.relationshipsTree) return;
-    
-    // Find and update node position
-    const nodeIndex = character.relationshipsTree.nodes.findIndex(n => n.id === nodeId);
-    if (nodeIndex !== -1) {
-        character.relationshipsTree.nodes[nodeIndex].position = position;
-    }
-    
-    saveDatabase();
-}
-
-// Export functions for use in other modules
-window.createAnimationProfile = createAnimationProfile;
-window.addFrameToAnimation = addFrameToAnimation;
-window.updateFrameInAnimation = updateFrameInAnimation;
-window.removeFrameFromAnimation = removeFrameFromAnimation;
-window.setAnimationSpeed = setAnimationSpeed;
-window.setAnimationLoop = setAnimationLoop;
-window.createCharacterRelationshipTree = createCharacterRelationshipTree;
-window.addCharacterToRelationshipTree = addCharacterToRelationshipTree;
-window.addRelationshipEdge = addRelationshipEdge;
-window.updateRelationshipEdge = updateRelationshipEdge;
-window.removeRelationshipEdge = removeRelationshipEdge;
-window.updateCharacterNodePosition = updateCharacterNodePosition;
-
-// Initialize database when page loads
-document.addEventListener('DOMContentLoaded', initDatabase);
+// Export functions
+window.initDatabase = initDatabase;
+window.saveDatabase = saveDatabase;
+window.loadDatabase = loadDatabase;
