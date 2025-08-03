@@ -11,6 +11,8 @@ let gameData = {
     storyArcs: [],
     system: {
         currencies: ['Gems', 'Gold'],
+        rarities: ['Common', 'Uncommon', 'Rare', 'Epic', 'Legendary', 'Mythic'],
+        elements: ['Fire', 'Water', 'Earth', 'Wind', 'Light', 'Dark', 'Neutral'],
         levelCurve: []
     }
 };
@@ -206,7 +208,7 @@ function renderCharacterItem(character) {
             <div class="database-item-content">
                 <div class="database-item-title">${character.name}</div>
                 <div class="database-item-meta">
-                    <span class="rarity ${character.rarity}">${character.rarity}</span>
+                    <span class="rarity ${character.rarity.toLowerCase()}">${character.rarity}</span>
                     <span>${character.faction || 'No Faction'}</span>
                 </div>
             </div>
@@ -243,29 +245,26 @@ function openCharacterEditor(character) {
     
     editorElement.innerHTML = `
         <div class="form-group">
-            <label>Character Name</label>
-            <input type="text" id="char-name" value="${character?.name || ''}" placeholder="Enter character name">
+            <label>Character Name *</label>
+            <input type="text" id="char-name" value="${character?.name || ''}" placeholder="Enter character name" required>
         </div>
         
         <div class="form-group">
-            <label>Title</label>
+            <label>Title (Optional)</label>
             <input type="text" id="char-title" value="${character?.title || ''}" placeholder="Character title">
         </div>
         
         <div class="form-group">
-            <label>Rarity</label>
-            <select id="char-rarity">
-                <option value="common" ${character?.rarity === 'common' ? 'selected' : ''}>Common</option>
-                <option value="uncommon" ${character?.rarity === 'uncommon' ? 'selected' : ''}>Uncommon</option>
-                <option value="rare" ${character?.rarity === 'rare' ? 'selected' : ''}>Rare</option>
-                <option value="epic" ${character?.rarity === 'epic' ? 'selected' : ''}>Epic</option>
-                <option value="legendary" ${character?.rarity === 'legendary' ? 'selected' : ''}>Legendary</option>
-                <option value="mythic" ${character?.rarity === 'mythic' ? 'selected' : ''}>Mythic</option>
+            <label>Rarity *</label>
+            <select id="char-rarity" required>
+                ${gameData.system.rarities.map(rarity => 
+                    `<option value="${rarity}" ${character?.rarity === rarity ? 'selected' : ''}>${rarity}</option>`
+                ).join('')}
             </select>
         </div>
         
         <div class="form-group">
-            <label>Faction</label>
+            <label>Faction (Optional)</label>
             <select id="char-faction">
                 <option value="">No Faction</option>
                 ${gameData.factions.map(f => 
@@ -274,15 +273,34 @@ function openCharacterEditor(character) {
             </select>
         </div>
         
-        <div class="form-group">
-            <label>Character Image</label>
-            <div class="drop-zone" id="char-image-drop">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag & Drop your character image here</p>
-                <p>or click to select</p>
-                <input type="file" id="char-image-input" accept="image/*" style="display: none;">
+        <div class="form-section">
+            <h4>Character Appearance</h4>
+            
+            <div class="form-group">
+                <label>Character Image *</label>
+                <div class="drop-zone" id="char-image-drop">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & Drop your character image here</p>
+                    <p>or click to select</p>
+                    <input type="file" id="char-image-input" accept="image/*" style="display: none;">
+                </div>
+                <img id="char-image-preview" class="image-preview" src="${character?.image || ''}" alt="Preview">
             </div>
-            <img id="char-image-preview" class="image-preview" src="${character?.image || ''}" alt="Preview">
+            
+            <div class="form-group">
+                <label>Animation Type</label>
+                <select id="char-animation-type">
+                    <option value="static" ${character?.animationType === 'static' ? 'selected' : ''}>Static Image</option>
+                    <option value="spritesheet" ${character?.animationType === 'spritesheet' ? 'selected' : ''}>Spritesheet Animation</option>
+                    <option value="frame-by-frame" ${character?.animationType === 'frame-by-frame' ? 'selected' : ''}>Frame-by-Frame</option>
+                </select>
+            </div>
+            
+            <div id="animation-options" style="display: ${character?.animationType === 'static' ? 'none' : 'block'};">
+                ${character?.animationType === 'spritesheet' ? 
+                    renderSpritesheetOptions(character) : 
+                    renderFrameByFrameOptions(character)}
+            </div>
         </div>
         
         <div class="form-group">
@@ -293,26 +311,129 @@ function openCharacterEditor(character) {
         <h4>Base Stats</h4>
         <div class="stats-grid">
             <div class="form-group stat-input">
-                <label>HP</label>
-                <input type="number" id="char-hp" value="${character?.stats?.hp || 100}">
+                <label>HP *</label>
+                <input type="number" id="char-hp" value="${character?.stats?.hp || 100}" min="1" required>
             </div>
             <div class="form-group stat-input">
-                <label>Attack</label>
-                <input type="number" id="char-atk" value="${character?.stats?.attack || 10}">
+                <label>Attack *</label>
+                <input type="number" id="char-atk" value="${character?.stats?.attack || 10}" min="1" required>
             </div>
             <div class="form-group stat-input">
-                <label>Defense</label>
-                <input type="number" id="char-def" value="${character?.stats?.defense || 5}">
+                <label>Defense *</label>
+                <input type="number" id="char-def" value="${character?.stats?.defense || 5}" min="0" required>
             </div>
             <div class="form-group stat-input">
-                <label>Speed</label>
-                <input type="number" id="char-spd" value="${character?.stats?.speed || 5}">
+                <label>Speed *</label>
+                <input type="number" id="char-spd" value="${character?.stats?.speed || 5}" min="0" required>
             </div>
         </div>
         
         <h4>Abilities</h4>
         <div id="char-abilities">
             ${renderCharacterAbilities(character)}
+        </div>
+        
+        <h4>Character Relationships</h4>
+        <div class="form-section">
+            <div class="form-group">
+                <label>Likes</label>
+                <div class="relationship-container" id="char-likes">
+                    ${character?.relationships?.likes?.map(like => 
+                        `<div class="relationship-item">
+                            <select class="character-select">
+                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                    `<option value="${c.id}" ${c.id === like.characterId ? 'selected' : ''}>${c.name}</option>`
+                                ).join('')}
+                            </select>
+                            <button class="btn btn-sm btn-danger remove-relationship">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-relationship" data-type="like" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Like
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>Dislikes</label>
+                <div class="relationship-container" id="char-dislikes">
+                    ${character?.relationships?.dislikes?.map(dislike => 
+                        `<div class="relationship-item">
+                            <select class="character-select">
+                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                    `<option value="${c.id}" ${c.id === dislike.characterId ? 'selected' : ''}>${c.name}</option>`
+                                ).join('')}
+                            </select>
+                            <button class="btn btn-sm btn-danger remove-relationship">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-relationship" data-type="dislike" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Dislike
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>Team Bonuses</label>
+                <div class="relationship-container" id="char-team-bonuses">
+                    ${character?.relationships?.teamBonuses?.map(bonus => 
+                        `<div class="team-bonus-item">
+                            <div class="form-row" style="margin-bottom: 5px;">
+                                <select class="character-select" style="flex: 2;">
+                                    ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                        `<option value="${c.id}" ${c.id === bonus.characterId ? 'selected' : ''}>${c.name}</option>`
+                                    ).join('')}
+                                </select>
+                                <select class="bonus-type">
+                                    <option value="atk" ${bonus.type === 'atk' ? 'selected' : ''}>ATK</option>
+                                    <option value="def" ${bonus.type === 'def' ? 'selected' : ''}>DEF</option>
+                                    <option value="hp" ${bonus.type === 'hp' ? 'selected' : ''}>HP</option>
+                                    <option value="spd" ${bonus.type === 'spd' ? 'selected' : ''}>SPD</option>
+                                </select>
+                                <input type="number" class="bonus-value" value="${bonus.value}" min="1" max="100" style="width: 60px;">
+                                <span>%</span>
+                                <button class="btn btn-sm btn-danger remove-team-bonus">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-team-bonus" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Team Bonus
+                </button>
+            </div>
+        </div>
+        
+        <h4>Evolutions & Upgrades</h4>
+        <div class="form-section">
+            <div class="form-group">
+                <label>Evolves Into</label>
+                <div class="evolution-container" id="char-evolutions">
+                    ${character?.evolutions?.map(evolution => 
+                        `<div class="evolution-item">
+                            <div class="form-row" style="margin-bottom: 5px;">
+                                <select class="character-select" style="flex: 2;">
+                                    ${gameData.characters.filter(c => c.id !== character.id).map(c => 
+                                        `<option value="${c.id}" ${c.id === evolution.targetId ? 'selected' : ''}>${c.name}</option>`
+                                    ).join('')}
+                                </select>
+                                <input type="text" class="evolution-requirements" value="${evolution.requirements || ''}" placeholder="Requirements" style="flex: 1;">
+                                <button class="btn btn-sm btn-danger remove-evolution">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>`
+                    ).join('')}
+                </div>
+                <button class="btn btn-sm btn-info add-evolution" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Evolution
+                </button>
+            </div>
         </div>
         
         <div class="form-actions" style="margin-top: 20px;">
@@ -325,6 +446,21 @@ function openCharacterEditor(character) {
     
     // Set up image upload
     setupImageUpload('char-image-drop', 'char-image-input', 'char-image-preview');
+    
+    // Animation type change
+    document.getElementById('char-animation-type').addEventListener('change', function() {
+        const animationType = this.value;
+        const optionsContainer = document.getElementById('animation-options');
+        
+        if (animationType === 'static') {
+            optionsContainer.style.display = 'none';
+        } else {
+            optionsContainer.style.display = 'block';
+            optionsContainer.innerHTML = animationType === 'spritesheet' ? 
+                renderSpritesheetOptions(character) : 
+                renderFrameByFrameOptions(character);
+        }
+    });
     
     // Save character event
     const saveBtn = document.getElementById('save-character');
@@ -342,6 +478,40 @@ function openCharacterEditor(character) {
         });
     }
     
+    // Add relationship buttons
+    document.querySelectorAll('.add-relationship').forEach(btn => {
+        btn.addEventListener('click', function() {
+            addRelationship(this.dataset.type);
+        });
+    });
+    
+    // Remove relationship buttons
+    document.querySelectorAll('.remove-relationship').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.relationship-item').remove();
+        });
+    });
+    
+    // Add team bonus button
+    document.querySelector('.add-team-bonus').addEventListener('click', addTeamBonus);
+    
+    // Remove team bonus buttons
+    document.querySelectorAll('.remove-team-bonus').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.team-bonus-item').remove();
+        });
+    });
+    
+    // Add evolution button
+    document.querySelector('.add-evolution').addEventListener('click', addEvolution);
+    
+    // Remove evolution buttons
+    document.querySelectorAll('.remove-evolution').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.evolution-item').remove();
+        });
+    });
+    
     // Add ability buttons
     document.querySelectorAll('.add-ability').forEach(btn => {
         btn.addEventListener('click', function() {
@@ -351,24 +521,209 @@ function openCharacterEditor(character) {
     });
 }
 
+// Render spritesheet options
+function renderSpritesheetOptions(character) {
+    return `
+        <div class="form-group">
+            <label>Spritesheet Image</label>
+            <div class="drop-zone" id="spritesheet-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop spritesheet image here</p>
+                <p>or click to select</p>
+                <input type="file" id="spritesheet-input" accept="image/*" style="display: none;">
+            </div>
+            <img id="spritesheet-preview" class="image-preview" src="${character?.spritesheet?.image || ''}" alt="Spritesheet Preview">
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Frames per Row</label>
+                <input type="number" id="spritesheet-frames-row" value="${character?.spritesheet?.framesPerRow || 4}" min="1">
+            </div>
+            <div class="form-group">
+                <label>Total Frames</label>
+                <input type="number" id="spritesheet-total-frames" value="${character?.spritesheet?.totalFrames || 16}" min="1">
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Animation Speed</label>
+            <input type="range" id="spritesheet-speed" min="1" max="30" value="${character?.spritesheet?.speed || 10}">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray);">
+                <span>Slow</span>
+                <span>Medium</span>
+                <span>Fast</span>
+            </div>
+        </div>
+    `;
+}
+
+// Render frame-by-frame animation options
+function renderFrameByFrameOptions(character) {
+    return `
+        <div class="form-group">
+            <label>Frame 1</label>
+            <div class="drop-zone" id="frame1-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame1-input" accept="image/*" style="display: none;">
+            </div>
+            <img id="frame1-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[0] || ''}" alt="Frame 1 Preview">
+        </div>
+        
+        <div class="form-group">
+            <label>Frame 2</label>
+            <div class="drop-zone" id="frame2-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame2-input" accept="image/*" style="display: none;">
+            </div>
+            <img id="frame2-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[1] || ''}" alt="Frame 2 Preview">
+        </div>
+        
+        <div class="form-group">
+            <label>Frame 3</label>
+            <div class="drop-zone" id="frame3-drop">
+                <i class="fas fa-cloud-upload-alt"></i>
+                <p>Drag & Drop frame image here</p>
+                <p>or click to select</p>
+                <input type="file" id="frame3-input" accept="image/*" style="display: none;">
+            </div>
+            <img id="frame3-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[2] || ''}" alt="Frame 3 Preview">
+        </div>
+        
+        <div class="form-group">
+            <label>Animation Speed</label>
+            <input type="range" id="framebyframe-speed" min="1" max="30" value="${character?.frameByFrame?.speed || 10}">
+            <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray);">
+                <span>Slow</span>
+                <span>Medium</span>
+                <span>Fast</span>
+            </div>
+        </div>
+    `;
+}
+
+// Add relationship
+function addRelationship(type) {
+    const container = document.getElementById(`char-${type}s`);
+    const characterOptions = gameData.characters
+        .filter(c => !document.querySelectorAll(`#char-${type}s .character-select`).some(select => 
+            select.value === c.id))
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'relationship-item';
+    newItem.innerHTML = `
+        <select class="character-select">
+            <option value="">Select character</option>
+            ${characterOptions}
+        </select>
+        <button class="btn btn-sm btn-danger remove-relationship">
+            <i class="fas fa-trash"></i>
+        </button>
+    `;
+    
+    container.appendChild(newItem);
+    
+    // Add event listener to the new remove button
+    newItem.querySelector('.remove-relationship').addEventListener('click', function() {
+        this.closest('.relationship-item').remove();
+    });
+}
+
+// Add team bonus
+function addTeamBonus() {
+    const container = document.getElementById('char-team-bonuses');
+    const characterOptions = gameData.characters
+        .filter(c => !document.querySelectorAll('#char-team-bonuses .character-select').some(select => 
+            select.value === c.id))
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'team-bonus-item';
+    newItem.innerHTML = `
+        <div class="form-row" style="margin-bottom: 5px;">
+            <select class="character-select" style="flex: 2;">
+                <option value="">Select character</option>
+                ${characterOptions}
+            </select>
+            <select class="bonus-type">
+                <option value="atk">ATK</option>
+                <option value="def">DEF</option>
+                <option value="hp">HP</option>
+                <option value="spd">SPD</option>
+            </select>
+            <input type="number" class="bonus-value" value="10" min="1" max="100" style="width: 60px;">
+            <span>%</span>
+            <button class="btn btn-sm btn-danger remove-team-bonus">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(newItem);
+    
+    // Add event listener to the new remove button
+    newItem.querySelector('.remove-team-bonus').addEventListener('click', function() {
+        this.closest('.team-bonus-item').remove();
+    });
+}
+
+// Add evolution
+function addEvolution() {
+    const container = document.getElementById('char-evolutions');
+    const characterOptions = gameData.characters
+        .filter(c => !document.querySelectorAll('#char-evolutions .character-select').some(select => 
+            select.value === c.id))
+        .map(c => `<option value="${c.id}">${c.name}</option>`)
+        .join('');
+    
+    const newItem = document.createElement('div');
+    newItem.className = 'evolution-item';
+    newItem.innerHTML = `
+        <div class="form-row" style="margin-bottom: 5px;">
+            <select class="character-select" style="flex: 2;">
+                <option value="">Select character</option>
+                ${characterOptions}
+            </select>
+            <input type="text" class="evolution-requirements" value="" placeholder="Requirements" style="flex: 1;">
+            <button class="btn btn-sm btn-danger remove-evolution">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    
+    container.appendChild(newItem);
+    
+    // Add event listener to the new remove button
+    newItem.querySelector('.remove-evolution').addEventListener('click', function() {
+        this.closest('.evolution-item').remove();
+    });
+}
+
 // Render character abilities section
 function renderCharacterAbilities(character) {
     const abilities = character?.abilities || {};
     const abilityTypes = [
-        { key: 'basic', name: 'Basic Attack' },
-        { key: 'skill', name: 'Skill' },
-        { key: 'ultimate', name: 'Ultimate' },
-        { key: 'passive', name: 'Passive' },
-        { key: 'leader', name: 'Leader' }
+        { key: 'basic', name: 'Basic Attack', required: true },
+        { key: 'skill', name: 'Skill', required: true },
+        { key: 'ultimate', name: 'Ultimate', required: true },
+        { key: 'passive', name: 'Passive', required: false },
+        { key: 'leader', name: 'Leader', required: false }
     ];
     
     return abilityTypes.map(type => {
         const ability = abilities[type.key];
         return `
             <div class="form-group">
-                <label>${type.name}</label>
+                <label>${type.name}${type.required ? ' *' : ''}</label>
                 <div class="form-row">
-                    <select id="char-ability-${type.key}" class="ability-select">
+                    <select id="char-ability-${type.key}" class="ability-select" ${type.required ? 'required' : ''}>
                         <option value="">Select ${type.name}</option>
                         ${gameData.skills.map(skill => 
                             `<option value="${skill.id}" ${ability?.id === skill.id ? 'selected' : ''}>
@@ -380,8 +735,209 @@ function renderCharacterAbilities(character) {
                         <i class="fas fa-plus"></i> Create New
                     </button>
                 </div>
+                ${ability && type.key !== 'basic' && type.key !== 'skill' && type.key !== 'ultimate' ? 
+                    renderAbilityBuilder(type.key, ability) : ''}
             </div>
         `;
+    }).join('');
+}
+
+// Render ability builder for passive and leader abilities
+function renderAbilityBuilder(abilityType, ability) {
+    if (abilityType !== 'passive' && abilityType !== 'leader') return '';
+    
+    return `
+        <div class="ability-builder" style="margin-top: 10px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 5px;">
+            <div class="ability-builder-header" style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                <h5>${abilityType.charAt(0).toUpperCase() + abilityType.slice(1)} Ability Builder</h5>
+                <button class="btn btn-sm btn-secondary" id="reset-${abilityType}-builder">
+                    <i class="fas fa-redo"></i> Reset
+                </button>
+            </div>
+            
+            <div class="ability-builder-container" style="min-height: 100px; border: 1px dashed var(--gray); border-radius: 5px; padding: 10px; margin-bottom: 10px;">
+                ${ability?.builder?.conditions ? renderAbilityConditions(ability.builder.conditions) : '<p>Drag & drop conditions here</p>'}
+            </div>
+            
+            <div class="ability-builder-palette" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="character-in-team">
+                    <i class="fas fa-users"></i> Character in Team
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="character-as-leader">
+                    <i class="fas fa-crown"></i> Character as Leader
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="team-size">
+                    <i class="fas fa-layer-group"></i> Team Size
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="rarity">
+                    <i class="fas fa-star"></i> Character Rarity
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="faction">
+                    <i class="fas fa-shield-alt"></i> Character Faction
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="element">
+                    <i class="fas fa-fire"></i> Character Element
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="stat-bonus">
+                    <i class="fas fa-plus-circle"></i> Stat Bonus
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="transform">
+                    <i class="fas fa-sync-alt"></i> Transform Unit
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="effect">
+                    <i class="fas fa-bolt"></i> Apply Effect
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Render ability conditions
+function renderAbilityConditions(conditions) {
+    if (!conditions || conditions.length === 0) return '<p>Drag & drop conditions here</p>';
+    
+    return conditions.map((cond, index) => {
+        let content = '';
+        
+        switch(cond.type) {
+            case 'character-in-team':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.characterId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        IN TEAM
+                    </div>
+                `;
+                break;
+            case 'character-as-leader':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.characterId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        AS LEADER
+                    </div>
+                `;
+                break;
+            case 'team-size':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> TEAM SIZE 
+                        <select class="operator">
+                            <option value="==" ${cond.operator === '==' ? 'selected' : ''}>=</option>
+                            <option value=">=" ${cond.operator === '>=' ? 'selected' : ''}>&ge;</option>
+                            <option value="<=" ${cond.operator === '<=' ? 'selected' : ''}>&le;</option>
+                        </select>
+                        ${cond.value}
+                    </div>
+                `;
+                break;
+            case 'rarity':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.characterId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        RARITY IS 
+                        <select class="rarity-select">
+                            ${gameData.system.rarities.map(r => 
+                                `<option value="${r}" ${r === cond.rarity ? 'selected' : ''}>${r}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'faction':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.characterId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        BELONGS TO 
+                        <select class="faction-select">
+                            ${gameData.factions.map(f => 
+                                `<option value="${f.id}" ${f.id === cond.factionId ? 'selected' : ''}>${f.name}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'element':
+                content = `
+                    <div class="condition-item" data-index="${index}">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.characterId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        ELEMENT IS 
+                        <select class="element-select">
+                            ${gameData.system.elements.map(e => 
+                                `<option value="${e}" ${e === cond.element ? 'selected' : ''}>${e}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'stat-bonus':
+                content = `
+                    <div class="effect-item" data-index="${index}">
+                        ADD 
+                        <input type="number" class="bonus-value" value="${cond.value}" min="1" max="100" style="width: 50px;">
+                        % TO 
+                        <select class="stat-select">
+                            <option value="atk" ${cond.stat === 'atk' ? 'selected' : ''}>ATK</option>
+                            <option value="def" ${cond.stat === 'def' ? 'selected' : ''}>DEF</option>
+                            <option value="hp" ${cond.stat === 'hp' ? 'selected' : ''}>HP</option>
+                            <option value="spd" ${cond.stat === 'spd' ? 'selected' : ''}>SPD</option>
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'transform':
+                content = `
+                    <div class="effect-item" data-index="${index}">
+                        TRANSFORM INTO 
+                        <select class="character-select">
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}" ${c.id === cond.targetId ? 'selected' : ''}>${c.name}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'effect':
+                content = `
+                    <div class="effect-item" data-index="${index}">
+                        APPLY 
+                        <select class="effect-select">
+                            <option value="buff" ${cond.effect === 'buff' ? 'selected' : ''}>Buff</option>
+                            <option value="debuff" ${cond.effect === 'debuff' ? 'selected' : ''}>Debuff</option>
+                            <option value="heal" ${cond.effect === 'heal' ? 'selected' : ''}>Heal</option>
+                        </select>
+                        FOR 
+                        <input type="number" class="duration" value="${cond.duration || 3}" min="1" style="width: 40px;">
+                        TURNS
+                    </div>
+                `;
+                break;
+        }
+        
+        return `<div class="builder-item">${content}<button class="btn btn-sm btn-danger remove-builder-item"><i class="fas fa-times"></i></button></div>`;
     }).join('');
 }
 
@@ -462,31 +1018,121 @@ function saveCharacter(character) {
         return;
     }
     
+    // Validate required fields
+    if (!nameInput.value.trim()) {
+        alert('Character name is required!');
+        nameInput.focus();
+        return;
+    }
+    
+    if (isNaN(hpInput.value) || hpInput.value <= 0) {
+        alert('HP must be a positive number!');
+        hpInput.focus();
+        return;
+    }
+    
+    if (isNaN(atkInput.value) || atkInput.value <= 0) {
+        alert('Attack must be a positive number!');
+        atkInput.focus();
+        return;
+    }
+    
+    // Collect relationships
+    const relationships = {
+        likes: [],
+        dislikes: [],
+        teamBonuses: []
+    };
+    
+    document.querySelectorAll('#char-likes .relationship-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        if (characterId) {
+            relationships.likes.push({ characterId });
+        }
+    });
+    
+    document.querySelectorAll('#char-dislikes .relationship-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        if (characterId) {
+            relationships.dislikes.push({ characterId });
+        }
+    });
+    
+    document.querySelectorAll('#char-team-bonuses .team-bonus-item').forEach(item => {
+        const characterId = item.querySelector('.character-select').value;
+        const type = item.querySelector('.bonus-type').value;
+        const value = parseInt(item.querySelector('.bonus-value').value) || 0;
+        
+        if (characterId && value > 0) {
+            relationships.teamBonuses.push({ characterId, type, value });
+        }
+    });
+    
+    // Collect evolutions
+    const evolutions = [];
+    document.querySelectorAll('#char-evolutions .evolution-item').forEach(item => {
+        const targetId = item.querySelector('.character-select').value;
+        const requirements = item.querySelector('.evolution-requirements').value;
+        
+        if (targetId) {
+            evolutions.push({ targetId, requirements });
+        }
+    });
+    
     const charData = {
         id: character?.id || Date.now().toString(),
-        name: nameInput.value || '',
-        title: titleInput?.value || '',
-        rarity: raritySelect.value || 'common',
+        name: nameInput.value.trim(),
+        title: titleInput?.value.trim() || '',
+        rarity: raritySelect.value,
         factionId: factionSelect?.value || '',
         description: descriptionTextarea?.value || '',
         image: imagePreview?.src || '',
+        animationType: document.getElementById('char-animation-type')?.value || 'static',
+        spritesheet: {
+            image: document.getElementById('spritesheet-preview')?.src || '',
+            framesPerRow: parseInt(document.getElementById('spritesheet-frames-row')?.value) || 4,
+            totalFrames: parseInt(document.getElementById('spritesheet-total-frames')?.value) || 16,
+            speed: parseInt(document.getElementById('spritesheet-speed')?.value) || 10
+        },
+        frameByFrame: {
+            frames: [
+                document.getElementById('frame1-preview')?.src || '',
+                document.getElementById('frame2-preview')?.src || '',
+                document.getElementById('frame3-preview')?.src || ''
+            ],
+            speed: parseInt(document.getElementById('framebyframe-speed')?.value) || 10
+        },
         stats: {
             hp: parseInt(hpInput.value) || 100,
             attack: parseInt(atkInput.value) || 10,
             defense: parseInt(defInput.value) || 5,
             speed: parseInt(spdInput.value) || 5
         },
-        abilities: {}
+        abilities: {},
+        relationships: relationships,
+        evolutions: evolutions
     };
     
     // Save abilities
     ['basic', 'skill', 'ultimate', 'passive', 'leader'].forEach(type => {
         const select = document.getElementById(`char-ability-${type}`);
         if (select && select.value) {
-            charData.abilities[type] = {
-                id: select.value,
-                name: select.options[select.selectedIndex]?.text?.split(' (')[0] || 'Unknown Ability'
-            };
+            const ability = gameData.skills.find(s => s.id === select.value);
+            if (ability) {
+                charData.abilities[type] = {
+                    id: ability.id,
+                    name: ability.name,
+                    element: ability.element,
+                    damage: ability.damage,
+                    description: ability.description,
+                    animation: ability.animation
+                };
+                
+                // Save ability builder data for passive and leader abilities
+                if ((type === 'passive' || type === 'leader') && ability.builder) {
+                    charData.abilities[type].builder = ability.builder;
+                }
+            }
         }
     });
     
@@ -502,7 +1148,7 @@ function saveCharacter(character) {
     // Refresh the characters list
     renderCharactersTab();
     
-    // Show success message - CORRECTED SYNTAX
+    // Show success message
     document.querySelector('.status-indicator').style.backgroundColor = 'var(--success)';
     document.querySelector('.status span').textContent = isNew ? 'Character Created' : 'Character Updated';
     
@@ -522,44 +1168,106 @@ function openAbilityModal(abilityType, character) {
     modalContent.innerHTML = `
         <span class="close">&times;</span>
         <h3>Create New ${abilityType.charAt(0).toUpperCase() + abilityType.slice(1)} Ability</h3>
+        
         <div class="form-group">
-            <label>Ability Name</label>
-            <input type="text" id="ability-name" placeholder="Enter ability name">
+            <label>Ability Name *</label>
+            <input type="text" id="ability-name" placeholder="Enter ability name" required>
         </div>
         
         <div class="form-group">
-            <label>Element</label>
-            <select id="ability-element">
-                <option value="fire">Fire</option>
-                <option value="water">Water</option>
-                <option value="earth">Earth</option>
-                <option value="wind">Wind</option>
-                <option value="light">Light</option>
-                <option value="dark">Dark</option>
-                <option value="neutral">Neutral</option>
+            <label>Element *</label>
+            <select id="ability-element" required>
+                ${gameData.system.elements.map(element => 
+                    `<option value="${element}">${element}</option>`
+                ).join('')}
             </select>
         </div>
         
+        ${abilityType !== 'passive' && abilityType !== 'leader' ? `
         <div class="form-group">
-            <label>Base Damage</label>
-            <input type="number" id="ability-damage" value="100">
+            <label>Base Damage *</label>
+            <input type="number" id="ability-damage" value="100" min="0" required>
         </div>
+        ` : ''}
         
         <div class="form-group">
             <label>Description</label>
             <textarea id="ability-desc" rows="3"></textarea>
         </div>
         
-        <div class="form-group">
-            <label>Animation</label>
-            <div class="drop-zone" id="ability-anim-drop">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag & Drop animation file (GIF/PNG)</p>
-                <p>or click to select</p>
-                <input type="file" id="ability-anim-input" accept="image/*" style="display: none;">
+        ${abilityType !== 'passive' && abilityType !== 'leader' ? `
+        <div class="form-section">
+            <h4>Animation</h4>
+            
+            <div class="form-group">
+                <label>Animation Type</label>
+                <select id="ability-animation-type">
+                    <option value="static">Static Image</option>
+                    <option value="spritesheet">Spritesheet Animation</option>
+                    <option value="frame-by-frame">Frame-by-Frame</option>
+                </select>
             </div>
-            <img id="ability-anim-preview" class="image-preview" alt="Animation Preview">
+            
+            <div id="ability-animation-options">
+                <div class="form-group">
+                    <label>Animation Image</label>
+                    <div class="drop-zone" id="ability-anim-drop">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <p>Drag & Drop animation file (GIF/PNG)</p>
+                        <p>or click to select</p>
+                        <input type="file" id="ability-anim-input" accept="image/*" style="display: none;">
+                    </div>
+                    <img id="ability-anim-preview" class="image-preview" alt="Animation Preview">
+                </div>
+            </div>
         </div>
+        ` : ''}
+        
+        ${abilityType === 'passive' || abilityType === 'leader' ? `
+        <div class="form-section">
+            <h4>${abilityType.charAt(0).toUpperCase() + abilityType.slice(1)} Ability Builder</h4>
+            <p>Build your ability by dragging and dropping conditions and effects</p>
+            
+            <div class="ability-builder-container" style="min-height: 150px; border: 1px dashed var(--gray); border-radius: 5px; padding: 10px; margin-bottom: 15px;">
+                <p>Drag & drop conditions here to build your ${abilityType} ability</p>
+            </div>
+            
+            <div class="ability-builder-palette" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 15px;">
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="character-in-team">
+                    <i class="fas fa-users"></i> Character in Team
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="character-as-leader">
+                    <i class="fas fa-crown"></i> Character as Leader
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="team-size">
+                    <i class="fas fa-layer-group"></i> Team Size
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="rarity">
+                    <i class="fas fa-star"></i> Character Rarity
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="faction">
+                    <i class="fas fa-shield-alt"></i> Character Faction
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="condition" data-value="element">
+                    <i class="fas fa-fire"></i> Character Element
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="stat-bonus">
+                    <i class="fas fa-plus-circle"></i> Stat Bonus
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="transform">
+                    <i class="fas fa-sync-alt"></i> Transform Unit
+                </div>
+                <div class="builder-palette-item" draggable="true" data-type="effect" data-value="effect">
+                    <i class="fas fa-bolt"></i> Apply Effect
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Ability Description (Auto-generated)</label>
+                <textarea id="ability-desc-auto" rows="3" readonly></textarea>
+            </div>
+        </div>
+        ` : ''}
         
         <div class="form-actions" style="margin-top: 20px;">
             <button class="btn btn-primary" id="save-ability">
@@ -570,30 +1278,252 @@ function openAbilityModal(abilityType, character) {
     `;
     
     // Setup image upload for animation
-    setupImageUpload('ability-anim-drop', 'ability-anim-input', 'ability-anim-preview');
+    if (abilityType !== 'passive' && abilityType !== 'leader') {
+        setupImageUpload('ability-anim-drop', 'ability-anim-input', 'ability-anim-preview');
+        
+        // Animation type change
+        document.getElementById('ability-animation-type').addEventListener('change', function() {
+            const animationType = this.value;
+            const optionsContainer = document.getElementById('ability-animation-options');
+            
+            if (animationType === 'static') {
+                optionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>Animation Image</label>
+                        <div class="drop-zone" id="ability-anim-drop">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop animation file (GIF/PNG)</p>
+                            <p>or click to select</p>
+                            <input type="file" id="ability-anim-input" accept="image/*" style="display: none;">
+                        </div>
+                        <img id="ability-anim-preview" class="image-preview" alt="Animation Preview">
+                    </div>
+                `;
+                setupImageUpload('ability-anim-drop', 'ability-anim-input', 'ability-anim-preview');
+            } else if (animationType === 'spritesheet') {
+                optionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>Spritesheet Image</label>
+                        <div class="drop-zone" id="ability-spritesheet-drop">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop spritesheet image here</p>
+                            <p>or click to select</p>
+                            <input type="file" id="ability-spritesheet-input" accept="image/*" style="display: none;">
+                        </div>
+                        <img id="ability-spritesheet-preview" class="image-preview" alt="Spritesheet Preview">
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Frames per Row</label>
+                            <input type="number" id="ability-spritesheet-frames-row" value="4" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Total Frames</label>
+                            <input type="number" id="ability-spritesheet-total-frames" value="16" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Animation Speed</label>
+                        <input type="range" id="ability-spritesheet-speed" min="1" max="30" value="10">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray);">
+                            <span>Slow</span>
+                            <span>Medium</span>
+                            <span>Fast</span>
+                        </div>
+                    </div>
+                `;
+                setupImageUpload('ability-spritesheet-drop', 'ability-spritesheet-input', 'ability-spritesheet-preview');
+            } else if (animationType === 'frame-by-frame') {
+                optionsContainer.innerHTML = `
+                    <div class="form-group">
+                        <label>Frame 1</label>
+                        <div class="drop-zone" id="ability-frame1-drop">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop frame image here</p>
+                            <p>or click to select</p>
+                            <input type="file" id="ability-frame1-input" accept="image/*" style="display: none;">
+                        </div>
+                        <img id="ability-frame1-preview" class="image-preview" alt="Frame 1 Preview">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Frame 2</label>
+                        <div class="drop-zone" id="ability-frame2-drop">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop frame image here</p>
+                            <p>or click to select</p>
+                            <input type="file" id="ability-frame2-input" accept="image/*" style="display: none;">
+                        </div>
+                        <img id="ability-frame2-preview" class="image-preview" alt="Frame 2 Preview">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Frame 3</label>
+                        <div class="drop-zone" id="ability-frame3-drop">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                            <p>Drag & Drop frame image here</p>
+                            <p>or click to select</p>
+                            <input type="file" id="ability-frame3-input" accept="image/*" style="display: none;">
+                        </div>
+                        <img id="ability-frame3-preview" class="image-preview" alt="Frame 3 Preview">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Animation Speed</label>
+                        <input type="range" id="ability-framebyframe-speed" min="1" max="30" value="10">
+                        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--gray);">
+                            <span>Slow</span>
+                            <span>Medium</span>
+                            <span>Fast</span>
+                        </div>
+                    </div>
+                `;
+                setupImageUpload('ability-frame1-drop', 'ability-frame1-input', 'ability-frame1-preview');
+                setupImageUpload('ability-frame2-drop', 'ability-frame2-input', 'ability-frame2-preview');
+                setupImageUpload('ability-frame3-drop', 'ability-frame3-input', 'ability-frame3-preview');
+            }
+        });
+    }
+    
+    // Setup ability builder for passive and leader abilities
+    if (abilityType === 'passive' || abilityType === 'leader') {
+        setupAbilityBuilder();
+    }
     
     // Save ability
     const saveBtn = document.getElementById('save-ability');
     if (saveBtn) {
         saveBtn.addEventListener('click', function() {
-            const abilityData = {
-                id: Date.now().toString(),
-                name: document.getElementById('ability-name')?.value || 'New Ability',
-                type: abilityType,
-                element: document.getElementById('ability-element')?.value || 'neutral',
-                damage: parseInt(document.getElementById('ability-damage')?.value) || 100,
-                description: document.getElementById('ability-desc')?.value || '',
-                animation: document.getElementById('ability-anim-preview')?.src || ''
-            };
+            const name = document.getElementById('ability-name')?.value?.trim() || '';
+            const element = document.getElementById('ability-element')?.value || 'neutral';
             
-            gameData.skills.push(abilityData);
+            if (!name) {
+                alert('Ability name is required!');
+                return;
+            }
             
-            // Close the modal
-            modal.style.display = 'none';
-            
-            // Refresh the character editor to show the new ability
-            if (character) {
-                openCharacterEditor(character);
+            if (abilityType !== 'passive' && abilityType !== 'leader') {
+                const damage = parseInt(document.getElementById('ability-damage')?.value) || 100;
+                const description = document.getElementById('ability-desc')?.value || '';
+                
+                let animation = '';
+                const animationType = document.getElementById('ability-animation-type')?.value || 'static';
+                
+                if (animationType === 'static') {
+                    animation = document.getElementById('ability-anim-preview')?.src || '';
+                } else if (animationType === 'spritesheet') {
+                    const framesPerRow = parseInt(document.getElementById('ability-spritesheet-frames-row')?.value) || 4;
+                    const totalFrames = parseInt(document.getElementById('ability-spritesheet-total-frames')?.value) || 16;
+                    const speed = parseInt(document.getElementById('ability-spritesheet-speed')?.value) || 10;
+                    const image = document.getElementById('ability-spritesheet-preview')?.src || '';
+                    
+                    animation = {
+                        type: 'spritesheet',
+                        image: image,
+                        framesPerRow: framesPerRow,
+                        totalFrames: totalFrames,
+                        speed: speed
+                    };
+                } else if (animationType === 'frame-by-frame') {
+                    const frame1 = document.getElementById('ability-frame1-preview')?.src || '';
+                    const frame2 = document.getElementById('ability-frame2-preview')?.src || '';
+                    const frame3 = document.getElementById('ability-frame3-preview')?.src || '';
+                    const speed = parseInt(document.getElementById('ability-framebyframe-speed')?.value) || 10;
+                    
+                    animation = {
+                        type: 'frame-by-frame',
+                        frames: [frame1, frame2, frame3],
+                        speed: speed
+                    };
+                }
+                
+                const abilityData = {
+                    id: Date.now().toString(),
+                    name: name,
+                    type: abilityType,
+                    element: element,
+                    damage: damage,
+                    description: description,
+                    animation: animation
+                };
+                
+                gameData.skills.push(abilityData);
+                
+                // Close the modal
+                modal.style.display = 'none';
+                
+                // Refresh the character editor to show the new ability
+                if (character) {
+                    openCharacterEditor(character);
+                }
+            } else {
+                // For passive and leader abilities
+                const description = document.getElementById('ability-desc')?.value || '';
+                const autoDesc = document.getElementById('ability-desc-auto')?.value || '';
+                
+                // Get builder data
+                const conditions = [];
+                document.querySelectorAll('.ability-builder-container .builder-item').forEach(item => {
+                    const index = item.querySelector('.condition-item, .effect-item')?.dataset.index;
+                    const type = item.querySelector('[data-type]')?.dataset.value;
+                    
+                    if (type) {
+                        let condition = { type: type };
+                        
+                        switch(type) {
+                            case 'character-in-team':
+                            case 'character-as-leader':
+                            case 'rarity':
+                            case 'faction':
+                            case 'element':
+                                condition.characterId = item.querySelector('.character-select')?.value;
+                                if (type === 'rarity') condition.rarity = item.querySelector('.rarity-select')?.value;
+                                if (type === 'faction') condition.factionId = item.querySelector('.faction-select')?.value;
+                                if (type === 'element') condition.element = item.querySelector('.element-select')?.value;
+                                break;
+                            case 'team-size':
+                                condition.operator = item.querySelector('.operator')?.value;
+                                condition.value = item.querySelector('.value')?.value;
+                                break;
+                            case 'stat-bonus':
+                                condition.stat = item.querySelector('.stat-select')?.value;
+                                condition.value = item.querySelector('.bonus-value')?.value;
+                                break;
+                            case 'transform':
+                                condition.targetId = item.querySelector('.character-select')?.value;
+                                break;
+                            case 'effect':
+                                condition.effect = item.querySelector('.effect-select')?.value;
+                                condition.duration = item.querySelector('.duration')?.value;
+                                break;
+                        }
+                        
+                        conditions.push(condition);
+                    }
+                });
+                
+                const abilityData = {
+                    id: Date.now().toString(),
+                    name: name,
+                    type: abilityType,
+                    element: element,
+                    description: description || autoDesc,
+                    builder: {
+                        conditions: conditions
+                    }
+                };
+                
+                gameData.skills.push(abilityData);
+                
+                // Close the modal
+                modal.style.display = 'none';
+                
+                // Refresh the character editor to show the new ability
+                if (character) {
+                    openCharacterEditor(character);
+                }
             }
         });
     }
@@ -616,6 +1546,308 @@ function openAbilityModal(abilityType, character) {
     
     // Show the modal
     modal.style.display = 'flex';
+}
+
+// Setup ability builder for passive and leader abilities
+function setupAbilityBuilder() {
+    const builderContainer = document.querySelector('.ability-builder-container');
+    const paletteItems = document.querySelectorAll('.builder-palette-item');
+    
+    // Make palette items draggable
+    paletteItems.forEach(item => {
+        item.addEventListener('dragstart', function(e) {
+            e.dataTransfer.setData('text/plain', this.dataset.value);
+            e.dataTransfer.setData('type', this.dataset.type);
+            this.classList.add('dragging');
+        });
+        
+        item.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+        });
+    });
+    
+    // Set up drop zone
+    builderContainer.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        this.style.borderColor = 'var(--info)';
+    });
+    
+    builderContainer.addEventListener('dragleave', function() {
+        this.style.borderColor = 'var(--gray)';
+    });
+    
+    builderContainer.addEventListener('drop', function(e) {
+        e.preventDefault();
+        this.style.borderColor = 'var(--gray)';
+        
+        const type = e.dataTransfer.getData('type');
+        const value = e.dataTransfer.getData('text/plain');
+        
+        if (!value) return;
+        
+        // Create new builder item based on type and value
+        const newItem = document.createElement('div');
+        newItem.className = 'builder-item';
+        
+        let content = '';
+        
+        switch(value) {
+            case 'character-in-team':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        IN TEAM
+                    </div>
+                `;
+                break;
+            case 'character-as-leader':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        AS LEADER
+                    </div>
+                `;
+                break;
+            case 'team-size':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> TEAM SIZE 
+                        <select class="operator">
+                            <option value="==">=</option>
+                            <option value=">=">&ge;</option>
+                            <option value="<=">&le;</option>
+                        </select>
+                        <input type="number" class="value" value="3" min="1" style="width: 40px;">
+                    </div>
+                `;
+                break;
+            case 'rarity':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        RARITY IS 
+                        <select class="rarity-select">
+                            ${gameData.system.rarities.map(r => 
+                                `<option value="${r}">${r}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'faction':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        BELONGS TO 
+                        <select class="faction-select">
+                            ${gameData.factions.map(f => 
+                                `<option value="${f.id}">${f.name}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'element':
+                content = `
+                    <div class="condition-item">
+                        <strong>IF</strong> 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                        ELEMENT IS 
+                        <select class="element-select">
+                            ${gameData.system.elements.map(e => 
+                                `<option value="${e}">${e}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'stat-bonus':
+                content = `
+                    <div class="effect-item">
+                        ADD 
+                        <input type="number" class="bonus-value" value="10" min="1" max="100" style="width: 50px;">
+                        % TO 
+                        <select class="stat-select">
+                            <option value="atk">ATK</option>
+                            <option value="def">DEF</option>
+                            <option value="hp">HP</option>
+                            <option value="spd">SPD</option>
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'transform':
+                content = `
+                    <div class="effect-item">
+                        TRANSFORM INTO 
+                        <select class="character-select">
+                            <option value="">Select character</option>
+                            ${gameData.characters.map(c => 
+                                `<option value="${c.id}">${c.name}</option>`
+                            ).join('')}
+                        </select>
+                    </div>
+                `;
+                break;
+            case 'effect':
+                content = `
+                    <div class="effect-item">
+                        APPLY 
+                        <select class="effect-select">
+                            <option value="buff">Buff</option>
+                            <option value="debuff">Debuff</option>
+                            <option value="heal">Heal</option>
+                        </select>
+                        FOR 
+                        <input type="number" class="duration" value="3" min="1" style="width: 40px;">
+                        TURNS
+                    </div>
+                `;
+                break;
+        }
+        
+        newItem.innerHTML = `
+            ${content}
+            <button class="btn btn-sm btn-danger remove-builder-item">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        
+        // Add to container
+        this.innerHTML = '';
+        this.appendChild(newItem);
+        
+        // Add remove event
+        newItem.querySelector('.remove-builder-item').addEventListener('click', function() {
+            this.closest('.builder-item').remove();
+            if (builderContainer.children.length === 0) {
+                builderContainer.innerHTML = '<p>Drag & drop conditions here</p>';
+            }
+        });
+        
+        // Update auto-generated description
+        updateAbilityDescription();
+    });
+    
+    // Add event listener for reset button
+    document.getElementById('reset-passive-builder')?.addEventListener('click', function() {
+        builderContainer.innerHTML = '<p>Drag & drop conditions here</p>';
+        updateAbilityDescription();
+    });
+    
+    // Add event listener for any changes to update description
+    builderContainer.addEventListener('change', updateAbilityDescription);
+    builderContainer.addEventListener('input', updateAbilityDescription);
+}
+
+// Update ability description based on builder
+function updateAbilityDescription() {
+    const descriptionElement = document.getElementById('ability-desc-auto');
+    if (!descriptionElement) return;
+    
+    const container = document.querySelector('.ability-builder-container');
+    if (!container || container.children.length === 0) {
+        descriptionElement.value = '';
+        return;
+    }
+    
+    let description = '';
+    
+    // Process each condition
+    document.querySelectorAll('.condition-item').forEach((cond, index) => {
+        if (index > 0) description += ' AND ';
+        
+        const characterSelect = cond.querySelector('.character-select');
+        const characterName = characterSelect ? gameData.characters.find(c => c.id === characterSelect.value)?.name : '';
+        
+        switch(cond.dataset.value) {
+            case 'character-in-team':
+                description += characterName ? `${characterName} in team` : 'Character in team';
+                break;
+            case 'character-as-leader':
+                description += characterName ? `${characterName} as leader` : 'Character as leader';
+                break;
+            case 'team-size':
+                const operator = cond.querySelector('.operator')?.value;
+                const value = cond.querySelector('.value')?.value;
+                description += `Team size ${operator} ${value}`;
+                break;
+            case 'rarity':
+                const rarity = cond.querySelector('.rarity-select')?.value;
+                description += characterName ? `${characterName} is ${rarity}` : 'Character is ${rarity}';
+                break;
+            case 'faction':
+                const factionId = cond.querySelector('.faction-select')?.value;
+                const faction = gameData.factions.find(f => f.id === factionId);
+                description += characterName ? `${characterName} belongs to ${faction?.name}` : 'Character belongs to faction';
+                break;
+            case 'element':
+                const element = cond.querySelector('.element-select')?.value;
+                description += characterName ? `${characterName} is ${element}` : 'Character is element';
+                break;
+        }
+    });
+    
+    // Process effects
+    const effects = [];
+    document.querySelectorAll('.effect-item').forEach(effect => {
+        const characterSelect = effect.querySelector('.character-select');
+        const characterName = characterSelect ? gameData.characters.find(c => c.id === characterSelect.value)?.name : '';
+        
+        switch(effect.dataset.value) {
+            case 'stat-bonus':
+                const stat = effect.querySelector('.stat-select')?.value;
+                const value = effect.querySelector('.bonus-value')?.value;
+                effects.push(`${value}% ${stat.toUpperCase()}`);
+                break;
+            case 'transform':
+                const targetId = effect.querySelector('.character-select')?.value;
+                const target = gameData.characters.find(c => c.id === targetId);
+                effects.push(`Transform into ${target?.name}`);
+                break;
+            case 'effect':
+                const effectType = effect.querySelector('.effect-select')?.value;
+                const duration = effect.querySelector('.duration')?.value;
+                effects.push(`${effectType} for ${duration} turns`);
+                break;
+        }
+    });
+    
+    if (effects.length > 0) {
+        description += ' THEN ';
+        description += effects.join(' AND ');
+    }
+    
+    descriptionElement.value = description;
 }
 
 // ITEMS TAB - Placeholder implementation
@@ -806,29 +2038,82 @@ function renderSystemTab() {
     contentElement.innerHTML = `
         <div class="database-section">
             <h3>System Settings</h3>
-            <p>This section is under development. Coming soon!</p>
             
-            <div class="form-group">
-                <label>Currencies</label>
-                <div id="currencies-list">
-                    ${gameData.system.currencies.map(currency => `
-                        <div class="database-item" style="margin-bottom: 5px;">
-                            <div class="database-item-content">
-                                <div class="database-item-title">${currency}</div>
+            <div class="form-section">
+                <h4>Currencies</h4>
+                <div class="form-group">
+                    <div id="currencies-list">
+                        ${gameData.system.currencies.map(currency => `
+                            <div class="database-item" style="margin-bottom: 5px;">
+                                <div class="database-item-content">
+                                    <div class="database-item-title">${currency}</div>
+                                </div>
+                                <div class="database-item-actions">
+                                    <button class="btn btn-sm btn-danger delete-currency" data-currency="${currency}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
                             </div>
-                            <div class="database-item-actions">
-                                <button class="btn btn-sm btn-danger delete-currency" data-currency="${currency}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-                    `).join('')}
+                        `).join('')}
+                    </div>
+                    <div class="form-row" style="margin-top: 10px;">
+                        <input type="text" id="new-currency" placeholder="New currency name">
+                        <button class="btn btn-sm btn-success" id="add-currency">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
                 </div>
-                <div class="form-row" style="margin-top: 10px;">
-                    <input type="text" id="new-currency" placeholder="New currency name">
-                    <button class="btn btn-sm btn-success" id="add-currency">
-                        <i class="fas fa-plus"></i> Add
-                    </button>
+            </div>
+            
+            <div class="form-section">
+                <h4>Rarities</h4>
+                <div class="form-group">
+                    <div id="rarities-list">
+                        ${gameData.system.rarities.map(rarity => `
+                            <div class="database-item" style="margin-bottom: 5px;">
+                                <div class="database-item-content">
+                                    <div class="database-item-title">${rarity}</div>
+                                </div>
+                                <div class="database-item-actions">
+                                    <button class="btn btn-sm btn-danger delete-rarity" data-rarity="${rarity}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="form-row" style="margin-top: 10px;">
+                        <input type="text" id="new-rarity" placeholder="New rarity name">
+                        <button class="btn btn-sm btn-success" id="add-rarity">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="form-section">
+                <h4>Elements</h4>
+                <div class="form-group">
+                    <div id="elements-list">
+                        ${gameData.system.elements.map(element => `
+                            <div class="database-item" style="margin-bottom: 5px;">
+                                <div class="database-item-content">
+                                    <div class="database-item-title">${element}</div>
+                                </div>
+                                <div class="database-item-actions">
+                                    <button class="btn btn-sm btn-danger delete-element" data-element="${element}">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="form-row" style="margin-top: 10px;">
+                        <input type="text" id="new-element" placeholder="New element name">
+                        <button class="btn btn-sm btn-success" id="add-element">
+                            <i class="fas fa-plus"></i> Add
+                        </button>
+                    </div>
                 </div>
             </div>
             
@@ -859,6 +2144,48 @@ function renderSystemTab() {
         if (e.target.closest('.delete-currency')) {
             const currency = e.target.closest('.delete-currency').dataset.currency;
             gameData.system.currencies = gameData.system.currencies.filter(c => c !== currency);
+            renderSystemTab();
+        }
+    });
+    
+    // Add rarity event
+    document.getElementById('add-rarity').addEventListener('click', function() {
+        const rarityInput = document.getElementById('new-rarity');
+        const rarityName = rarityInput.value.trim();
+        
+        if (rarityName && !gameData.system.rarities.includes(rarityName)) {
+            gameData.system.rarities.push(rarityName);
+            rarityInput.value = '';
+            renderSystemTab();
+        }
+    });
+    
+    // Delete rarity event (using event delegation)
+    document.getElementById('rarities-list').addEventListener('click', function(e) {
+        if (e.target.closest('.delete-rarity')) {
+            const rarity = e.target.closest('.delete-rarity').dataset.rarity;
+            gameData.system.rarities = gameData.system.rarities.filter(r => r !== rarity);
+            renderSystemTab();
+        }
+    });
+    
+    // Add element event
+    document.getElementById('add-element').addEventListener('click', function() {
+        const elementInput = document.getElementById('new-element');
+        const elementName = elementInput.value.trim();
+        
+        if (elementName && !gameData.system.elements.includes(elementName)) {
+            gameData.system.elements.push(elementName);
+            elementInput.value = '';
+            renderSystemTab();
+        }
+    });
+    
+    // Delete element event (using event delegation)
+    document.getElementById('elements-list').addEventListener('click', function(e) {
+        if (e.target.closest('.delete-element')) {
+            const element = e.target.closest('.delete-element').dataset.element;
+            gameData.system.elements = gameData.system.elements.filter(e => e !== element);
             renderSystemTab();
         }
     });
