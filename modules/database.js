@@ -17,6 +17,13 @@ let gameData = {
     }
 };
 
+// Animation preview state
+let animationPreview = {
+    isPlaying: false,
+    currentFrame: 0,
+    intervalId: null
+};
+
 // Initialize the database module
 function initDatabase() {
     const databaseModule = document.getElementById('database-module');
@@ -335,76 +342,13 @@ function openCharacterEditor(character) {
         
         <h4>Character Relationships</h4>
         <div class="form-section">
-            <div class="form-group">
-                <label>Likes</label>
-                <div class="relationship-container" id="char-likes">
-                    ${character?.relationships?.likes?.map(like => 
-                        `<div class="relationship-item">
-                            <select class="character-select">
-                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
-                                    `<option value="${c.id}" ${c.id === like.characterId ? 'selected' : ''}>${c.name}</option>`
-                                ).join('')}
-                            </select>
-                            <button class="btn btn-sm btn-danger remove-relationship">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>`
-                    ).join('')}
-                </div>
-                <button class="btn btn-sm btn-info add-relationship" data-type="like" style="margin-top: 5px;">
-                    <i class="fas fa-plus"></i> Add Like
-                </button>
+            <div class="relationship-tree-container" id="relationship-tree">
+                <!-- Relationship tree will be rendered here -->
             </div>
             
-            <div class="form-group">
-                <label>Dislikes</label>
-                <div class="relationship-container" id="char-dislikes">
-                    ${character?.relationships?.dislikes?.map(dislike => 
-                        `<div class="relationship-item">
-                            <select class="character-select">
-                                ${gameData.characters.filter(c => c.id !== character.id).map(c => 
-                                    `<option value="${c.id}" ${c.id === dislike.characterId ? 'selected' : ''}>${c.name}</option>`
-                                ).join('')}
-                            </select>
-                            <button class="btn btn-sm btn-danger remove-relationship">
-                                <i class="fas fa-trash"></i>
-                            </button>
-                        </div>`
-                    ).join('')}
-                </div>
-                <button class="btn btn-sm btn-info add-relationship" data-type="dislike" style="margin-top: 5px;">
-                    <i class="fas fa-plus"></i> Add Dislike
-                </button>
-            </div>
-            
-            <div class="form-group">
-                <label>Team Bonuses</label>
-                <div class="relationship-container" id="char-team-bonuses">
-                    ${character?.relationships?.teamBonuses?.map(bonus => 
-                        `<div class="team-bonus-item">
-                            <div class="form-row" style="margin-bottom: 5px;">
-                                <select class="character-select" style="flex: 2;">
-                                    ${gameData.characters.filter(c => c.id !== character.id).map(c => 
-                                        `<option value="${c.id}" ${c.id === bonus.characterId ? 'selected' : ''}>${c.name}</option>`
-                                    ).join('')}
-                                </select>
-                                <select class="bonus-type">
-                                    <option value="atk" ${bonus.type === 'atk' ? 'selected' : ''}>ATK</option>
-                                    <option value="def" ${bonus.type === 'def' ? 'selected' : ''}>DEF</option>
-                                    <option value="hp" ${bonus.type === 'hp' ? 'selected' : ''}>HP</option>
-                                    <option value="spd" ${bonus.type === 'spd' ? 'selected' : ''}>SPD</option>
-                                </select>
-                                <input type="number" class="bonus-value" value="${bonus.value}" min="1" max="100" style="width: 60px;">
-                                <span>%</span>
-                                <button class="btn btn-sm btn-danger remove-team-bonus">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>`
-                    ).join('')}
-                </div>
-                <button class="btn btn-sm btn-info add-team-bonus" style="margin-top: 5px;">
-                    <i class="fas fa-plus"></i> Add Team Bonus
+            <div class="relationship-controls">
+                <button class="btn btn-sm btn-info add-character-relationship" style="margin-top: 5px;">
+                    <i class="fas fa-plus"></i> Add Character to Tree
                 </button>
             </div>
         </div>
@@ -478,30 +422,6 @@ function openCharacterEditor(character) {
         });
     }
     
-    // Add relationship buttons
-    document.querySelectorAll('.add-relationship').forEach(btn => {
-        btn.addEventListener('click', function() {
-            addRelationship(this.dataset.type);
-        });
-    });
-    
-    // Remove relationship buttons
-    document.querySelectorAll('.remove-relationship').forEach(btn => {
-        btn.addEventListener('click', function() {
-            this.closest('.relationship-item').remove();
-        });
-    });
-    
-    // Add team bonus button
-    document.querySelector('.add-team-bonus').addEventListener('click', addTeamBonus);
-    
-    // Remove team bonus buttons
-    document.querySelectorAll('.remove-team-bonus').forEach(btn => {
-        btn.addEventListener('click', function() {
-            this.closest('.team-bonus-item').remove();
-        });
-    });
-    
     // Add evolution button
     document.querySelector('.add-evolution').addEventListener('click', addEvolution);
     
@@ -518,6 +438,16 @@ function openCharacterEditor(character) {
             const abilityType = this.getAttribute('data-type');
             openAbilityModal(abilityType, character);
         });
+    });
+    
+    // Initialize relationship tree
+    if (character) {
+        renderRelationshipTree(character);
+    }
+    
+    // Add character to relationship tree button
+    document.querySelector('.add-character-relationship').addEventListener('click', function() {
+        addCharacterToRelationshipTree();
     });
 }
 
@@ -546,6 +476,17 @@ function renderSpritesheetOptions(character) {
             </div>
         </div>
         
+        <div class="form-row">
+            <div class="form-group">
+                <label>Frame Width (px)</label>
+                <input type="number" id="spritesheet-frame-width" value="${character?.spritesheet?.frameWidth || 32}" min="1">
+            </div>
+            <div class="form-group">
+                <label>Frame Height (px)</label>
+                <input type="number" id="spritesheet-frame-height" value="${character?.spritesheet?.frameHeight || 32}" min="1">
+            </div>
+        </div>
+        
         <div class="form-group">
             <label>Animation Speed</label>
             <input type="range" id="spritesheet-speed" min="1" max="30" value="${character?.spritesheet?.speed || 10}">
@@ -555,6 +496,15 @@ function renderSpritesheetOptions(character) {
                 <span>Fast</span>
             </div>
         </div>
+        
+        <div class="form-group">
+            <button class="btn btn-sm btn-info" id="play-spritesheet-animation">
+                <i class="fas fa-play"></i> Play Animation
+            </button>
+            <button class="btn btn-sm btn-secondary" id="stop-spritesheet-animation">
+                <i class="fas fa-stop"></i> Stop Animation
+            </button>
+        </div>
     `;
 }
 
@@ -562,36 +512,55 @@ function renderSpritesheetOptions(character) {
 function renderFrameByFrameOptions(character) {
     return `
         <div class="form-group">
-            <label>Frame 1</label>
-            <div class="drop-zone" id="frame1-drop">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag & Drop frame image here</p>
-                <p>or click to select</p>
-                <input type="file" id="frame1-input" accept="image/*" style="display: none;">
-            </div>
-            <img id="frame1-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[0] || ''}" alt="Frame 1 Preview">
+            <label>Animation Profile Name</label>
+            <input type="text" id="frame-profile-name" value="${character?.frameByFrame?.profileName || 'Animation Profile'}" placeholder="Enter profile name">
         </div>
         
-        <div class="form-group">
-            <label>Frame 2</label>
-            <div class="drop-zone" id="frame2-drop">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag & Drop frame image here</p>
-                <p>or click to select</p>
-                <input type="file" id="frame2-input" accept="image/*" style="display: none;">
+        <div class="form-row" style="margin-bottom: 10px;">
+            <div class="form-group" style="flex: 1; margin-right: 10px;">
+                <label>Frame 1</label>
+                <div class="drop-zone" id="frame1-drop">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & Drop frame image here</p>
+                    <p>or click to select</p>
+                    <input type="file" id="frame1-input" accept="image/*" style="display: none;">
+                </div>
+                <img id="frame1-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[0] || ''}" alt="Frame 1 Preview">
+                <div class="form-group">
+                    <label>Duration (ms)</label>
+                    <input type="number" id="frame1-duration" value="${character?.frameByFrame?.durations?.[0] || 200}" min="50">
+                </div>
             </div>
-            <img id="frame2-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[1] || ''}" alt="Frame 2 Preview">
-        </div>
-        
-        <div class="form-group">
-            <label>Frame 3</label>
-            <div class="drop-zone" id="frame3-drop">
-                <i class="fas fa-cloud-upload-alt"></i>
-                <p>Drag & Drop frame image here</p>
-                <p>or click to select</p>
-                <input type="file" id="frame3-input" accept="image/*" style="display: none;">
+            
+            <div class="form-group" style="flex: 1; margin-right: 10px;">
+                <label>Frame 2</label>
+                <div class="drop-zone" id="frame2-drop">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & Drop frame image here</p>
+                    <p>or click to select</p>
+                    <input type="file" id="frame2-input" accept="image/*" style="display: none;">
+                </div>
+                <img id="frame2-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[1] || ''}" alt="Frame 2 Preview">
+                <div class="form-group">
+                    <label>Duration (ms)</label>
+                    <input type="number" id="frame2-duration" value="${character?.frameByFrame?.durations?.[1] || 200}" min="50">
+                </div>
             </div>
-            <img id="frame3-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[2] || ''}" alt="Frame 3 Preview">
+            
+            <div class="form-group" style="flex: 1;">
+                <label>Frame 3</label>
+                <div class="drop-zone" id="frame3-drop">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Drag & Drop frame image here</p>
+                    <p>or click to select</p>
+                    <input type="file" id="frame3-input" accept="image/*" style="display: none;">
+                </div>
+                <img id="frame3-preview" class="image-preview" src="${character?.frameByFrame?.frames?.[2] || ''}" alt="Frame 3 Preview">
+                <div class="form-group">
+                    <label>Duration (ms)</label>
+                    <input type="number" id="frame3-duration" value="${character?.frameByFrame?.durations?.[2] || 200}" min="50">
+                </div>
+            </div>
         </div>
         
         <div class="form-group">
@@ -603,75 +572,16 @@ function renderFrameByFrameOptions(character) {
                 <span>Fast</span>
             </div>
         </div>
-    `;
-}
-
-// Add relationship
-function addRelationship(type) {
-    const container = document.getElementById(`char-${type}s`);
-    const characterOptions = gameData.characters
-        .filter(c => !document.querySelectorAll(`#char-${type}s .character-select`).some(select => 
-            select.value === c.id))
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
-        .join('');
-    
-    const newItem = document.createElement('div');
-    newItem.className = 'relationship-item';
-    newItem.innerHTML = `
-        <select class="character-select">
-            <option value="">Select character</option>
-            ${characterOptions}
-        </select>
-        <button class="btn btn-sm btn-danger remove-relationship">
-            <i class="fas fa-trash"></i>
-        </button>
-    `;
-    
-    container.appendChild(newItem);
-    
-    // Add event listener to the new remove button
-    newItem.querySelector('.remove-relationship').addEventListener('click', function() {
-        this.closest('.relationship-item').remove();
-    });
-}
-
-// Add team bonus
-function addTeamBonus() {
-    const container = document.getElementById('char-team-bonuses');
-    const characterOptions = gameData.characters
-        .filter(c => !document.querySelectorAll('#char-team-bonuses .character-select').some(select => 
-            select.value === c.id))
-        .map(c => `<option value="${c.id}">${c.name}</option>`)
-        .join('');
-    
-    const newItem = document.createElement('div');
-    newItem.className = 'team-bonus-item';
-    newItem.innerHTML = `
-        <div class="form-row" style="margin-bottom: 5px;">
-            <select class="character-select" style="flex: 2;">
-                <option value="">Select character</option>
-                ${characterOptions}
-            </select>
-            <select class="bonus-type">
-                <option value="atk">ATK</option>
-                <option value="def">DEF</option>
-                <option value="hp">HP</option>
-                <option value="spd">SPD</option>
-            </select>
-            <input type="number" class="bonus-value" value="10" min="1" max="100" style="width: 60px;">
-            <span>%</span>
-            <button class="btn btn-sm btn-danger remove-team-bonus">
-                <i class="fas fa-trash"></i>
+        
+        <div class="form-group">
+            <button class="btn btn-sm btn-info" id="play-frame-animation">
+                <i class="fas fa-play"></i> Play Animation
+            </button>
+            <button class="btn btn-sm btn-secondary" id="stop-frame-animation">
+                <i class="fas fa-stop"></i> Stop Animation
             </button>
         </div>
     `;
-    
-    container.appendChild(newItem);
-    
-    // Add event listener to the new remove button
-    newItem.querySelector('.remove-team-bonus').addEventListener('click', function() {
-        this.closest('.team-bonus-item').remove();
-    });
 }
 
 // Add evolution
@@ -1037,37 +947,6 @@ function saveCharacter(character) {
         return;
     }
     
-    // Collect relationships
-    const relationships = {
-        likes: [],
-        dislikes: [],
-        teamBonuses: []
-    };
-    
-    document.querySelectorAll('#char-likes .relationship-item').forEach(item => {
-        const characterId = item.querySelector('.character-select').value;
-        if (characterId) {
-            relationships.likes.push({ characterId });
-        }
-    });
-    
-    document.querySelectorAll('#char-dislikes .relationship-item').forEach(item => {
-        const characterId = item.querySelector('.character-select').value;
-        if (characterId) {
-            relationships.dislikes.push({ characterId });
-        }
-    });
-    
-    document.querySelectorAll('#char-team-bonuses .team-bonus-item').forEach(item => {
-        const characterId = item.querySelector('.character-select').value;
-        const type = item.querySelector('.bonus-type').value;
-        const value = parseInt(item.querySelector('.bonus-value').value) || 0;
-        
-        if (characterId && value > 0) {
-            relationships.teamBonuses.push({ characterId, type, value });
-        }
-    });
-    
     // Collect evolutions
     const evolutions = [];
     document.querySelectorAll('#char-evolutions .evolution-item').forEach(item => {
@@ -1109,7 +988,6 @@ function saveCharacter(character) {
             speed: parseInt(spdInput.value) || 5
         },
         abilities: {},
-        relationships: relationships,
         evolutions: evolutions
     };
     
@@ -1850,346 +1728,178 @@ function updateAbilityDescription() {
     descriptionElement.value = description;
 }
 
-// ITEMS TAB - Placeholder implementation
-function renderItemsTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+// Animation-related functions
+function createAnimationProfile(characterId, animationName) {
+    // Create an animation profile object for the character
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Item List</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-item" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Item
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Item Editor</h3>
-                <p>Select an item to edit or create a new one</p>
-            </div>
-        </div>
-    `;
-    
-    // Add event listeners
-    const addItemBtn = document.getElementById('add-item');
-    if (addItemBtn) {
-        addItemBtn.addEventListener('click', function() {
-            alert('Item creation functionality will be available in the next update!');
-        });
+    // Initialize animation data structure
+    if (!character.animations) {
+        character.animations = {};
     }
+    
+    // Add new animation profile
+    character.animations[animationName] = {
+        name: animationName,
+        type: '', // 'spritesheet', 'frame-by-frame'
+        frames: [], // array of frame objects
+        speed: 10, // frames per second
+        loop: true // whether to loop the animation
+    };
+    
+    saveDatabase();
 }
 
-// SKILLS TAB - Placeholder implementation
-function renderSkillsTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+function addFrameToAnimation(characterId, animationName, frameData) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.animations[animationName]) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Skills List</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-skill" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Skill
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Skill Editor</h3>
-                <p>Select a skill to edit or create a new one</p>
-            </div>
-        </div>
-    `;
+    // Add frame to animation
+    character.animations[animationName].frames.push(frameData);
     
-    // Add event listeners
-    const addSkillBtn = document.getElementById('add-skill');
-    if (addSkillBtn) {
-        addSkillBtn.addEventListener('click', function() {
-            alert('Skill creation functionality will be available in the next update!');
-        });
-    }
+    saveDatabase();
 }
 
-// FACTIONS TAB - Placeholder implementation
-function renderFactionsTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+function updateFrameInAnimation(characterId, animationName, frameIndex, updatedFrame) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.animations[animationName]) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Faction List</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-faction" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Faction
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Faction Editor</h3>
-                <p>Select a faction to edit or create a new one</p>
-            </div>
-        </div>
-    `;
-    
-    // Add event listeners
-    const addFactionBtn = document.getElementById('add-faction');
-    if (addFactionBtn) {
-        addFactionBtn.addEventListener('click', function() {
-            alert('Faction creation functionality will be available in the next update!');
-        });
+    // Update specific frame
+    if (character.animations[animationName].frames[frameIndex]) {
+        character.animations[animationName].frames[frameIndex] = updatedFrame;
     }
+    
+    saveDatabase();
 }
 
-// GATCHA TAB - Placeholder implementation
-function renderGatchaTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+function removeFrameFromAnimation(characterId, animationName, frameIndex) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.animations[animationName]) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Gatcha Banners</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-banner" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Banner
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Banner Editor</h3>
-                <p>Select a banner to edit or create a new one</p>
-            </div>
-        </div>
-    `;
+    // Remove frame from animation
+    character.animations[animationName].frames.splice(frameIndex, 1);
     
-    // Add event listeners
-    const addBannerBtn = document.getElementById('add-banner');
-    if (addBannerBtn) {
-        addBannerBtn.addEventListener('click', function() {
-            alert('Gatcha banner creation functionality will be available in the next update!');
-        });
-    }
+    saveDatabase();
 }
 
-// ACHIEVEMENTS TAB - Placeholder implementation
-function renderAchievementsTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+function setAnimationSpeed(characterId, animationName, speed) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.animations[animationName]) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Achievements List</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-achievement" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Achievement
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Achievement Editor</h3>
-                <p>Select an achievement to edit or create a new one</p>
-            </div>
-        </div>
-    `;
+    // Update animation speed
+    character.animations[animationName].speed = speed;
     
-    // Add event listeners
-    const addAchievementBtn = document.getElementById('add-achievement');
-    if (addAchievementBtn) {
-        addAchievementBtn.addEventListener('click', function() {
-            alert('Achievement creation functionality will be available in the next update!');
-        });
-    }
+    saveDatabase();
 }
 
-// STORY TAB - Placeholder implementation
-function renderStoryTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+function setAnimationLoop(characterId, animationName, loop) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.animations[animationName]) return;
     
-    contentElement.innerHTML = `
-        <div class="database-grid">
-            <div class="database-section">
-                <h3>Story Arcs</h3>
-                <p>This section is under development. Coming soon!</p>
-                <button class="btn btn-success" id="add-arc" style="margin-top: 15px;">
-                    <i class="fas fa-plus"></i> Add Story Arc
-                </button>
-            </div>
-            <div class="database-section">
-                <h3>Story Editor</h3>
-                <p>Select a story arc to edit or create a new one</p>
-            </div>
-        </div>
-    `;
+    // Update animation loop setting
+    character.animations[animationName].loop = loop;
     
-    // Add event listeners
-    const addArcBtn = document.getElementById('add-arc');
-    if (addArcBtn) {
-        addArcBtn.addEventListener('click', function() {
-            alert('Story creation functionality will be available in the next update!');
-        });
-    }
+    saveDatabase();
 }
 
-// SYSTEM TAB - Placeholder implementation
-function renderSystemTab() {
-    const contentElement = document.getElementById('database-content');
-    if (!contentElement) return;
+// Relationship system functions
+function createCharacterRelationshipTree(characterId) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character) return;
     
-    contentElement.innerHTML = `
-        <div class="database-section">
-            <h3>System Settings</h3>
-            
-            <div class="form-section">
-                <h4>Currencies</h4>
-                <div class="form-group">
-                    <div id="currencies-list">
-                        ${gameData.system.currencies.map(currency => `
-                            <div class="database-item" style="margin-bottom: 5px;">
-                                <div class="database-item-content">
-                                    <div class="database-item-title">${currency}</div>
-                                </div>
-                                <div class="database-item-actions">
-                                    <button class="btn btn-sm btn-danger delete-currency" data-currency="${currency}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="form-row" style="margin-top: 10px;">
-                        <input type="text" id="new-currency" placeholder="New currency name">
-                        <button class="btn btn-sm btn-success" id="add-currency">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h4>Rarities</h4>
-                <div class="form-group">
-                    <div id="rarities-list">
-                        ${gameData.system.rarities.map(rarity => `
-                            <div class="database-item" style="margin-bottom: 5px;">
-                                <div class="database-item-content">
-                                    <div class="database-item-title">${rarity}</div>
-                                </div>
-                                <div class="database-item-actions">
-                                    <button class="btn btn-sm btn-danger delete-rarity" data-rarity="${rarity}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="form-row" style="margin-top: 10px;">
-                        <input type="text" id="new-rarity" placeholder="New rarity name">
-                        <button class="btn btn-sm btn-success" id="add-rarity">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h4>Elements</h4>
-                <div class="form-group">
-                    <div id="elements-list">
-                        ${gameData.system.elements.map(element => `
-                            <div class="database-item" style="margin-bottom: 5px;">
-                                <div class="database-item-content">
-                                    <div class="database-item-title">${element}</div>
-                                </div>
-                                <div class="database-item-actions">
-                                    <button class="btn btn-sm btn-danger delete-element" data-element="${element}">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                </div>
-                            </div>
-                        `).join('')}
-                    </div>
-                    <div class="form-row" style="margin-top: 10px;">
-                        <input type="text" id="new-element" placeholder="New element name">
-                        <button class="btn btn-sm btn-success" id="add-element">
-                            <i class="fas fa-plus"></i> Add
-                        </button>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>Level Curve</label>
-                <p>Configure how experience points translate to levels</p>
-                <div id="level-curve">
-                    <p>Level curve configuration coming soon...</p>
-                </div>
-            </div>
-        </div>
-    `;
+    // Initialize relationships tree structure
+    if (!character.relationshipsTree) {
+        character.relationshipsTree = {
+            nodes: [], // array of node objects with id, name, image, type (like/dislike)
+            edges: []  // array of edge objects connecting nodes
+        };
+    }
     
-    // Add currency event
-    document.getElementById('add-currency').addEventListener('click', function() {
-        const currencyInput = document.getElementById('new-currency');
-        const currencyName = currencyInput.value.trim();
-        
-        if (currencyName && !gameData.system.currencies.includes(currencyName)) {
-            gameData.system.currencies.push(currencyName);
-            currencyInput.value = '';
-            renderSystemTab();
-        }
+    saveDatabase();
+}
+
+function addCharacterToRelationshipTree(characterId, nodeId, nodeData) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.relationshipsTree) return;
+    
+    // Add new node to tree
+    character.relationshipsTree.nodes.push({
+        id: nodeId,
+        name: nodeData.name,
+        image: nodeData.image,
+        type: nodeData.type, // 'like' or 'dislike'
+        position: nodeData.position || { x: 0, y: 0 }
     });
     
-    // Delete currency event (using event delegation)
-    document.getElementById('currencies-list').addEventListener('click', function(e) {
-        if (e.target.closest('.delete-currency')) {
-            const currency = e.target.closest('.delete-currency').dataset.currency;
-            gameData.system.currencies = gameData.system.currencies.filter(c => c !== currency);
-            renderSystemTab();
-        }
-    });
-    
-    // Add rarity event
-    document.getElementById('add-rarity').addEventListener('click', function() {
-        const rarityInput = document.getElementById('new-rarity');
-        const rarityName = rarityInput.value.trim();
-        
-        if (rarityName && !gameData.system.rarities.includes(rarityName)) {
-            gameData.system.rarities.push(rarityName);
-            rarityInput.value = '';
-            renderSystemTab();
-        }
-    });
-    
-    // Delete rarity event (using event delegation)
-    document.getElementById('rarities-list').addEventListener('click', function(e) {
-        if (e.target.closest('.delete-rarity')) {
-            const rarity = e.target.closest('.delete-rarity').dataset.rarity;
-            gameData.system.rarities = gameData.system.rarities.filter(r => r !== rarity);
-            renderSystemTab();
-        }
-    });
-    
-    // Add element event
-    document.getElementById('add-element').addEventListener('click', function() {
-        const elementInput = document.getElementById('new-element');
-        const elementName = elementInput.value.trim();
-        
-        if (elementName && !gameData.system.elements.includes(elementName)) {
-            gameData.system.elements.push(elementName);
-            elementInput.value = '';
-            renderSystemTab();
-        }
-    });
-    
-    // Delete element event (using event delegation)
-    document.getElementById('elements-list').addEventListener('click', function(e) {
-        if (e.target.closest('.delete-element')) {
-            const element = e.target.closest('.delete-element').dataset.element;
-            gameData.system.elements = gameData.system.elements.filter(e => e !== element);
-            renderSystemTab();
-        }
-    });
+    saveDatabase();
 }
 
-// Load the database when the module is initialized
-loadDatabase();
+function addRelationshipEdge(characterId, fromNodeId, toNodeId, relationshipType, buffDebuff = null) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.relationshipsTree) return;
+    
+    // Add new edge between nodes
+    character.relationshipsTree.edges.push({
+        id: `${fromNodeId}-${toNodeId}`,
+        from: fromNodeId,
+        to: toNodeId,
+        type: relationshipType, // 'like' or 'dislike'
+        buffDebuff: buffDebuff || null
+    });
+    
+    saveDatabase();
+}
+
+function updateRelationshipEdge(characterId, edgeId, updatedData) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.relationshipsTree) return;
+    
+    // Find and update specific edge
+    const edgeIndex = character.relationshipsTree.edges.findIndex(e => e.id === edgeId);
+    if (edgeIndex !== -1) {
+        Object.assign(character.relationshipsTree.edges[edgeIndex], updatedData);
+    }
+    
+    saveDatabase();
+}
+
+function removeRelationshipEdge(characterId, edgeId) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.relationshipsTree) return;
+    
+    // Remove specific edge
+    character.relationshipsTree.edges = character.relationshipsTree.edges.filter(e => e.id !== edgeId);
+    
+    saveDatabase();
+}
+
+function updateCharacterNodePosition(characterId, nodeId, position) {
+    const character = gameData.characters.find(c => c.id === characterId);
+    if (!character || !character.relationshipsTree) return;
+    
+    // Find and update node position
+    const nodeIndex = character.relationshipsTree.nodes.findIndex(n => n.id === nodeId);
+    if (nodeIndex !== -1) {
+        character.relationshipsTree.nodes[nodeIndex].position = position;
+    }
+    
+    saveDatabase();
+}
+
+// Export functions for use in other modules
+window.createAnimationProfile = createAnimationProfile;
+window.addFrameToAnimation = addFrameToAnimation;
+window.updateFrameInAnimation = updateFrameInAnimation;
+window.removeFrameFromAnimation = removeFrameFromAnimation;
+window.setAnimationSpeed = setAnimationSpeed;
+window.setAnimationLoop = setAnimationLoop;
+window.createCharacterRelationshipTree = createCharacterRelationshipTree;
+window.addCharacterToRelationshipTree = addCharacterToRelationshipTree;
+window.addRelationshipEdge = addRelationshipEdge;
+window.updateRelationshipEdge = updateRelationshipEdge;
+window.removeRelationshipEdge = removeRelationshipEdge;
+window.updateCharacterNodePosition = updateCharacterNodePosition;
+
+// Initialize database when page loads
+document.addEventListener('DOMContentLoaded', initDatabase);
